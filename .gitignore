@@ -1,3 +1,6 @@
+# Ignore stimuli. Grab these from the VPNL's repository.
+stimuli/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
