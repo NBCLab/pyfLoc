@@ -143,9 +143,9 @@ if __name__ == '__main__':
         name='waiting',
         text='Waiting for scanner...',
         font=u'Arial',
-        height=2,
+        height=0.1,
         pos=(0, 0),
-        wrapWidth=30,
+        wrapWidth=None,
         ori=0,
         color='white',
         colorSpace='rgb',
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         colorSpace='rgb',
         opacity=1,
         depth=-1.0,
-        interpolate=True)
+        interpolate=False)
     crosshair = visual.TextStim(
         win=window,
         name='fixation',
@@ -265,7 +265,7 @@ if __name__ == '__main__':
                 width, height = stim_image.size
                 new_shape = (1. * (width / height), 1.)
                 stim_image.setSize(new_shape)
-                draw(win=window, stim=stim_images[stim_counter], duration=IMAGE_DURATION, clock=run_clock)
+                draw(win=window, stim=stim_image, duration=IMAGE_DURATION, clock=run_clock)
                 stim_image.size = None
                 duration = trial_clock.getTime()
                 draw(win=window, stim=crosshair, duration=ISI, clock=run_clock)
