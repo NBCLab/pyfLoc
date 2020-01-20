@@ -36,7 +36,7 @@ def randomize_carefully(elems, n_repeat=2):
             np.random.shuffle(lst)
             lst.append(res[-1])
             # Shuffle once more to avoid obvious repeating patterns in the last position
-            lst[1:] = np.random.choice(lst[1:], size=len(lst)-1)
+            lst[1:] = np.random.choice(lst[1:], size=len(lst)-1, replace=False)
         else:
             lst = elems[:]
             np.random.shuffle(lst)
@@ -268,7 +268,8 @@ if __name__ == '__main__':
                 draw(win=window, stim=stim_image, duration=IMAGE_DURATION, clock=run_clock)
                 stim_image.size = None
                 duration = trial_clock.getTime()
-                draw(win=window, stim=crosshair, duration=ISI, clock=run_clock)
+                isi_dur = (IMAGE_DURATION + ISI) - duration
+                draw(win=window, stim=crosshair, duration=isi_dur, clock=run_clock)
                 relative_stim_file = op.sep.join(stim.split(op.sep)[-2:])
                 subcategory = stim.split(op.sep)[-2]
 
