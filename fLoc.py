@@ -287,7 +287,8 @@ if __name__ == '__main__':
             miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
-        run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a', index=False)
+        run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
+                         index=False, float_format='%.2f')
 
         # Last fixation
         last_iti = TOTAL_DURATION - run_clock.getTime()
