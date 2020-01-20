@@ -11,7 +11,7 @@ import pandas as pd
 from psychopy import gui, visual, core, data, event, logging
 from psychopy.constants import STARTED, STOPPED
 
-LEAD_IN_DURATION = 0
+LEAD_IN_DURATION = 6
 N_STIMULI_PER_BLOCK = 12
 IMAGE_DURATION = 0.4
 ISI = 0.1
@@ -19,6 +19,9 @@ TOTAL_DURATION = 240  # four minutes
 END_SCREEN_DURATION = 2
 N_BLOCKS = (TOTAL_DURATION - LEAD_IN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + ISI))
 N_BLOCKS = int(np.floor(N_BLOCKS))
+TOTAL_DURATION = 252  # 4:12, giving time for lead-in and ending fixations
+N_BLOCKS = 40
+
 
 
 def randomize_carefully(elems, n_repeat=2):
@@ -36,7 +39,7 @@ def randomize_carefully(elems, n_repeat=2):
             np.random.shuffle(lst)
             lst.append(res[-1])
             # Shuffle once more to avoid obvious repeating patterns in the last position
-            lst[1:] = np.random.choice(lst[1:], size=len(lst)-1)
+            lst[1:] = np.random.choice(lst[1:], size=len(lst)-1, replace=False)
         else:
             lst = elems[:]
             np.random.shuffle(lst)
@@ -143,9 +146,9 @@ if __name__ == '__main__':
         name='waiting',
         text='Waiting for scanner...',
         font=u'Arial',
-        height=2,
+        height=0.1,
         pos=(0, 0),
-        wrapWidth=30,
+        wrapWidth=None,
         ori=0,
         color='white',
         colorSpace='rgb',
@@ -161,7 +164,7 @@ if __name__ == '__main__':
         colorSpace='rgb',
         opacity=1,
         depth=-1.0,
-        interpolate=True)
+        interpolate=False)
     crosshair = visual.TextStim(
         win=window,
         name='fixation',
@@ -253,6 +256,7 @@ if __name__ == '__main__':
             ser.write('FF')
 
         run_clock.reset()
+        draw(win=window, stim=crosshair, duration=LEAD_IN_DURATION, clock=run_clock)
 
         for j_miniblock, category in enumerate(selected_stimtypes):
             miniblock_clock.reset()
@@ -265,10 +269,11 @@ if __name__ == '__main__':
                 width, height = stim_image.size
                 new_shape = (1. * (width / height), 1.)
                 stim_image.setSize(new_shape)
-                draw(win=window, stim=stim_images[stim_counter], duration=IMAGE_DURATION, clock=run_clock)
+                draw(win=window, stim=stim_image, duration=IMAGE_DURATION, clock=run_clock)
                 stim_image.size = None
                 duration = trial_clock.getTime()
-                draw(win=window, stim=crosshair, duration=ISI, clock=run_clock)
+                isi_dur = np.maximum((IMAGE_DURATION + ISI) - duration, 0)
+                draw(win=window, stim=crosshair, duration=isi_dur, clock=run_clock)
                 relative_stim_file = op.sep.join(stim.split(op.sep)[-2:])
                 subcategory = stim.split(op.sep)[-2]
 
@@ -284,13 +289,14 @@ if __name__ == '__main__':
         run_frame = pd.DataFrame(run_data)
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a', index=False)
 
+        # Last fixation
+        last_iti = TOTAL_DURATION - run_clock.getTime()
+        draw(win=window, stim=crosshair, duration=last_iti, clock=run_clock)
+
         # End recording
         if exp_info['BioPac'] == 'Yes':
             ser.write('00')
 
-        print('Predicted duration of run: {}'.format(
-            LEAD_IN_DURATION + n_blocks_per_condition * len(stimulus_folders.keys()) *
-            N_STIMULI_PER_BLOCK * (ISI + IMAGE_DURATION)))
         print('Total duration of run: {}'.format(run_clock.getTime()))
     # end run_loop
 
