@@ -22,8 +22,55 @@ N_BLOCKS = int(np.floor(N_BLOCKS))
 TOTAL_DURATION = 252  # 4:12, giving time for lead-in and ending fixations
 N_BLOCKS = 40
 TASK_RATE = 0.5  # rate of actual tasks throughout scan. Should be specified as fraction
-STIMULUS_HEIGHT = 1.
-RESPONSE_WINDOW = 1.
+STIMULUS_HEIGHT = 1.  # height for images
+RESPONSE_WINDOW = 1.  # time for participants to response to a target stimulus
+
+
+def allocate_responses(responses, response_times, events_df, response_window=1):
+    # Let's start by locating target trials
+    task_types = ['oddball', 'oneBack', 'twoBack']
+    response_times = response_times[:]  # copy
+    target_trial_idx = events_df['trial_type'].isin(task_types)
+    nontarget_trial_idx = ~target_trial_idx
+
+    events_df['response_time'] = 'n/a'
+    events_df['accuracy'] = 1  # no-response is default, so correct is too
+    events_df['classification'] = 'true_negative'
+    events_df.loc[target_trial_idx, 'accuracy'] = 0  # default to miss
+    events_df.loc[target_trial_idx, 'classification'] = 'false_negative'
+    print(response_times)
+
+    # Log hits
+    for trial_idx in events_df.index[target_trial_idx]:
+        onset = events_df.loc[trial_idx, 'onset']
+        keep_idx = []
+        # Looping backwards lets us keep earliest response for RT
+        for i_resp, rt in enumerate(response_times[::-1]):
+            if onset <= rt <= (onset + response_window):
+                events_df.loc[trial_idx, 'accuracy'] = 1
+                events_df.loc[trial_idx, 'response_time'] = rt - onset
+                events_df.loc[trial_idx, 'classification'] = 'true_positive'
+            else:
+                keep_idx.append(response_times.index(rt))
+        response_times = [response_times[i] for i in sorted(keep_idx)]
+    print('after logging hits')
+    print(response_times)
+
+    # Log false alarms
+    for trial_idx in events_df.index[nontarget_trial_idx]:
+        onset = events_df.loc[trial_idx, 'onset']
+        if trial_idx == events_df.index.values[-1]:
+            next_onset = onset + response_window
+        else:
+            next_onset = events_df.loc[trial_idx+1, 'onset']
+        # Looping backwards lets us keep earliest response for RT
+        for i_resp, rt in enumerate(response_times[::-1]):
+            if onset <= rt < next_onset:
+                # Ignore response window and use current trial's duration only
+                events_df.loc[trial_idx, 'accuracy'] = 0
+                events_df.loc[trial_idx, 'classification'] = 'false_positive'
+                events_df.loc[trial_idx, 'response_time'] = rt - onset
+    return events_df
 
 
 def randomize_carefully(elems, n_repeat=2):
@@ -83,7 +130,7 @@ def draw(win, stim, duration, clock):
                 s.draw()
         else:
             stim.draw()
-        keys = event.getKeys(keyList=['1', '2', '3'], timeStamped=clock)
+        keys = event.getKeys(keyList=['1', '2'], timeStamped=clock)
         if keys:
             response.keys.extend(keys)
             response.rt.append(response.clock.getTime())
@@ -286,6 +333,13 @@ if __name__ == '__main__':
         if i_run == 0:
             instruction_text_box.draw()
         else:
+            hit_count = (run_frame['classification'] == 'true_positive').sum()
+            n_probes = run_frame['classification'].isin(['false_negative', 'true_positive']).sum()
+            hit_rate = hit_count / n_probes
+            fa_count = (run_frame['classification'] == 'false_positive').sum()
+            performance_str = ('Hits: {0}/{1} ({2:.02f}%)\nFalse alarms: {3}').format(
+                hit_count, n_probes, hit_rate, fa_count)
+            performance_screen.setText(performance_str)
             performance_screen.draw()
         window.flip()
         event.waitKeys(keyList=['5'])
@@ -295,6 +349,7 @@ if __name__ == '__main__':
             ser.write('FF')
 
         run_clock.reset()
+        all_responses, all_response_times = [], []
         countdown_sec = COUNTDOWN_DURATION
         remaining_time = COUNTDOWN_DURATION
         countdown_text_box.setText(countdown_sec)
@@ -348,11 +403,15 @@ if __name__ == '__main__':
                 task_responses, _ = draw(win=window, stim=stim_image,
                                          duration=IMAGE_DURATION,
                                          clock=run_clock)
+                all_responses += [resp[0] for resp in task_responses]
+                all_response_times += [resp[1] for resp in task_responses]
                 stim_image.size = None  # clear size
                 duration = trial_clock.getTime()
                 isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
                 rest_responses, _ = draw(win=window, stim=crosshair,
                                          duration=isi_dur, clock=run_clock)
+                all_responses += [resp[0] for resp in rest_responses]
+                all_response_times += [resp[1] for resp in rest_responses]
                 relative_stim_file = op.sep.join(stim_file.split(op.sep)[-2:])
                 subcategory = stim_file.split(op.sep)[-2]
 
@@ -374,6 +433,10 @@ if __name__ == '__main__':
         run_frame = pd.DataFrame(run_data)
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
                          index=False, float_format='%.2f')
+        run_frame = allocate_responses(all_responses, all_response_times, run_frame,
+                                       response_window=RESPONSE_WINDOW)
+        run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
+                         index=False, float_format='%.2f')
 
         # Last fixation
         last_iti = TOTAL_DURATION - run_clock.getTime()
@@ -383,6 +446,8 @@ if __name__ == '__main__':
         if exp_info['BioPac'] == 'Yes':
             ser.write('00')
 
+        print(all_responses)
+        print(all_response_times)
         print('Total duration of run: {}'.format(run_clock.getTime()))
     # end run_loop
 
@@ -391,6 +456,13 @@ if __name__ == '__main__':
         ser.close()
 
     # Scanner is off for this
+    hit_count = (run_frame['classification'] == 'true_positive').sum()
+    n_probes = run_frame['classification'].isin(['false_negative', 'true_positive']).sum()
+    hit_rate = hit_count / n_probes
+    fa_count = (run_frame['classification'] == 'false_positive').sum()
+    performance_str = ('Hits: {0}/{1} ({2:.02f}%)\nFalse alarms: {3}').format(
+        hit_count, n_probes, hit_rate, fa_count)
+    performance_screen.setText(performance_str)
     draw(win=window, stim=performance_screen, duration=END_SCREEN_DURATION, clock=global_clock)
     window.flip()
 
