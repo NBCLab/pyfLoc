@@ -21,7 +21,7 @@ N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE
 N_BLOCKS = int(np.floor(N_BLOCKS))
 TOTAL_DURATION = 252  # 4:12, giving time for lead-in and ending fixations
 N_BLOCKS = 40
-TASK_RATE  # rate of actual tasks throughout scan
+TASK_RATE = 0.5  # rate of actual tasks throughout scan
 
 
 
@@ -142,6 +142,19 @@ if __name__ == '__main__':
 
     # Initialize stimuli
     # ------------------
+    countdown_text_box = visual.TextStim(
+        win=window,
+        name='countdown',
+        text=None,
+        font=u'Arial',
+        height=0.1,
+        pos=(0, 0),
+        wrapWidth=None,
+        ori=0,
+        color='white',
+        colorSpace='rgb',
+        opacity=1,
+        depth=-1.0)
     if exp_info['Task'] == 'oddball':
         instruction_text = 'Fixate. Press a button when a scrambled image appears.'
     elif exp_info['Task'] == 'twoBack':
@@ -243,7 +256,8 @@ if __name__ == '__main__':
     trial_clock = core.Clock()  # to track duration of each trial
 
     for i_run in range(n_runs):
-        COLUMNS = ['onset', 'duration', 'miniblock_number', 'category', 'subcategory', 'stim_file']
+        COLUMNS = ['onset', 'duration', 'trial_type', 'miniblock_number',
+                   'category', 'subcategory', 'stim_file']
         run_data = {c: [] for c in COLUMNS}
         run_label = i_run + 1
         outfile = op.join(script_dir, 'data',
@@ -266,7 +280,16 @@ if __name__ == '__main__':
             ser.write('FF')
 
         run_clock.reset()
-        draw(win=window, stim=countdown, duration=COUNTDOWN_DURATION, clock=run_clock)
+        countdown_sec = COUNTDOWN_DURATION
+        remaining_time = COUNTDOWN_DURATION
+        countdown_text_box.setText(countdown_sec)
+        while remaining_time > 0:
+            countdown_text_box.draw()
+            window.flip()
+            remaining_time = COUNTDOWN_DURATION - run_clock.getTime()
+            if np.floor(remaining_time) <= countdown_sec:
+                countdown_text_box.setText(countdown_sec + 1)
+                countdown_sec -= 1
 
         real_countdown_duration = run_clock.getTime()
         run_data['onset'].append(0)
