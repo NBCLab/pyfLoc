@@ -11,16 +11,17 @@ import pandas as pd
 from psychopy import gui, visual, core, data, event, logging
 from psychopy.constants import STARTED, STOPPED
 
-LEAD_IN_DURATION = 6
+COUNTDOWN_DURATION = 12
 N_STIMULI_PER_BLOCK = 12
 IMAGE_DURATION = 0.4
-ISI = 0.1
+TARGET_ISI = 0.1
 TOTAL_DURATION = 240  # four minutes
 END_SCREEN_DURATION = 2
-N_BLOCKS = (TOTAL_DURATION - LEAD_IN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + ISI))
+N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI))
 N_BLOCKS = int(np.floor(N_BLOCKS))
 TOTAL_DURATION = 252  # 4:12, giving time for lead-in and ending fixations
 N_BLOCKS = 40
+TASK_RATE  # rate of actual tasks throughout scan
 
 
 
@@ -118,7 +119,7 @@ if __name__ == '__main__':
         units='norm',
         allowStencil=False,
         allowGUI=False,
-        color='black',
+        color='gray',
         colorSpace='rgb',
         blendMode='avg',
         useFBO=True)
@@ -141,10 +142,16 @@ if __name__ == '__main__':
 
     # Initialize stimuli
     # ------------------
+    if exp_info['Task'] == 'oddball':
+        instruction_text = 'Fixate. Press a button when a scrambled image appears.'
+    elif exp_info['Task'] == 'twoBack':
+        instruction_text = 'Fixate. Press a button when an image repeats on sequential trials.'
+    else:
+        instruction_text = 'Fixate. Press a button when an image repeats on sequential trials.'
     instruction_text_box = visual.TextStim(
         win=window,
-        name='waiting',
-        text='Waiting for scanner...',
+        name='instructions',
+        text=instruction_text,
         font=u'Arial',
         height=0.1,
         pos=(0, 0),
@@ -174,14 +181,14 @@ if __name__ == '__main__':
         height=0.14,
         wrapWidth=None,
         ori=0,
-        color='white',
+        color='red',
         colorSpace='rgb',
         opacity=1,
         depth=0.0)
-    end_screen = visual.TextStim(
+    performance_screen = visual.TextStim(
         win=window,
-        name='end_screen',
-        text='The task is now complete.',
+        name='performance_screen',
+        text=None,
         font=u'Arial',
         pos=(0, 0),
         height=0.14,
@@ -247,7 +254,10 @@ if __name__ == '__main__':
         # Scanner runtime
         # ---------------
         # Wait for trigger from scanner.
-        instruction_text_box.draw()
+        if i_run == 0:
+            instruction_text_box.draw()
+        else:
+            performance_screen.draw()
         window.flip()
         event.waitKeys(keyList=['5'])
 
@@ -256,7 +266,16 @@ if __name__ == '__main__':
             ser.write('FF')
 
         run_clock.reset()
-        draw(win=window, stim=crosshair, duration=LEAD_IN_DURATION, clock=run_clock)
+        draw(win=window, stim=countdown, duration=COUNTDOWN_DURATION, clock=run_clock)
+
+        real_countdown_duration = run_clock.getTime()
+        run_data['onset'].append(0)
+        run_data['duration'].append(real_countdown_duration)
+        run_data['trial_type'].append('countdown')
+        run_data['stim_file'].append('n/a')
+        run_data['category'].append('n/a')
+        run_data['subcategory'].append('n/a')
+        run_data['miniblock_number'].append('n/a')
 
         for j_miniblock, category in enumerate(selected_stimtypes):
             miniblock_clock.reset()
@@ -269,17 +288,23 @@ if __name__ == '__main__':
                 width, height = stim_image.size
                 new_shape = (1. * (width / height), 1.)
                 stim_image.setSize(new_shape)
-                draw(win=window, stim=stim_image, duration=IMAGE_DURATION, clock=run_clock)
+                task_responses, _ = draw(win=window, stim=stim_image,
+                                         duration=IMAGE_DURATION,
+                                         clock=run_clock)
                 stim_image.size = None
                 duration = trial_clock.getTime()
-                isi_dur = np.maximum((IMAGE_DURATION + ISI) - duration, 0)
-                draw(win=window, stim=crosshair, duration=isi_dur, clock=run_clock)
+                isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
+                rest_responses, _ = draw(win=window, stim=crosshair,
+                                         duration=isi_dur, clock=run_clock)
                 relative_stim_file = op.sep.join(stim.split(op.sep)[-2:])
                 subcategory = stim.split(op.sep)[-2]
+
+                trial_type = 'baseline'
 
                 # Log info
                 run_data['onset'].append(onset_time)
                 run_data['duration'].append(duration)
+                run_data['trial_type'].append(trial_type)
                 run_data['stim_file'].append(relative_stim_file)
                 run_data['category'].append(category)
                 run_data['subcategory'].append(subcategory)
@@ -306,7 +331,7 @@ if __name__ == '__main__':
         ser.close()
 
     # Scanner is off for this
-    draw(win=window, stim=end_screen, duration=END_SCREEN_DURATION, clock=global_clock)
+    draw(win=window, stim=performance_screen, duration=END_SCREEN_DURATION, clock=global_clock)
     window.flip()
 
     logging.flush()
