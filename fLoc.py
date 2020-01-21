@@ -21,8 +21,9 @@ N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE
 N_BLOCKS = int(np.floor(N_BLOCKS))
 TOTAL_DURATION = 252  # 4:12, giving time for lead-in and ending fixations
 N_BLOCKS = 40
-TASK_RATE = 0.5  # rate of actual tasks throughout scan
-
+TASK_RATE = 0.5  # rate of actual tasks throughout scan. Should be specified as fraction
+STIMULUS_HEIGHT = 1.
+RESPONSE_WINDOW = 1.
 
 
 def randomize_carefully(elems, n_repeat=2):
@@ -243,10 +244,11 @@ if __name__ == '__main__':
 
     stimuli = {}
     for category in stimulus_folders.keys():
-        stimulus_files = [glob('stimuli/{}/*.jpg'.format(stimulus_folder)) for
+        stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
                           stimulus_folder in stimulus_folders[category]]
         stimulus_files = [item for sublist in stimulus_files for item in sublist]
         stimuli[category] = stimulus_files
+    scrambled_stimuli = glob(op.join(script_dir, 'stimuli/scrambled/*.jpg'))
 
     # Scanner runtime
     # ---------------
@@ -263,7 +265,20 @@ if __name__ == '__main__':
         outfile = op.join(script_dir, 'data',
                           '{0}_run-{1:02d}_events.tsv'.format(base_name, run_label))
 
-        selected_stimtypes = randomize_carefully(list(stimuli.keys()), n_blocks_per_condition)
+        miniblock_categories = randomize_carefully(list(stimuli.keys()),
+                                                   n_blocks_per_condition)
+
+        # Determine which trials will be task
+        # This might be overly convoluted, but it maximizes balance between
+        # task/non-task instead of just sampling with set probabilities
+        nontask_rate = 1 - TASK_RATE
+        task_mult = 1 / np.minimum(TASK_RATE, nontask_rate)
+        n_task = int(task_mult * TASK_RATE)
+        n_nontask = int(task_mult * nontask_rate)
+        grabber_list = [1] * n_task + [0] * n_nontask
+        n_dupes = int(np.ceil(N_BLOCKS / len(grabber_list)))
+        task_miniblocks = grabber_list * n_dupes
+        np.random.shuffle(task_miniblocks)
 
         # Scanner runtime
         # ---------------
@@ -300,29 +315,51 @@ if __name__ == '__main__':
         run_data['subcategory'].append('n/a')
         run_data['miniblock_number'].append('n/a')
 
-        for j_miniblock, category in enumerate(selected_stimtypes):
+        for j_miniblock, category in enumerate(miniblock_categories):
             miniblock_clock.reset()
             # Block of stimuli
-            miniblock_stimuli = np.random.choice(stimuli[category], size=N_STIMULI_PER_BLOCK, replace=True)
-            for stim in miniblock_stimuli:
+            miniblock_stimuli = list(np.random.choice(stimuli[category],
+                                                      size=N_STIMULI_PER_BLOCK,
+                                                      replace=False))
+            if task_miniblocks[j_miniblock] == 1:
+                # Adjust stimuli based on task
+                if exp_info['Task'] == 'oddball':
+                    target_idx = np.random.choice(len(miniblock_stimuli))
+                    scrambled_stim = np.random.choice(scrambled_stimuli)
+                    miniblock_stimuli[target_idx] = scrambled_stim
+                elif exp_info['Task'] == 'oneBack':
+                    # target is second stim of same kind
+                    target_idx = np.random.choice(len(miniblock_stimuli) - 1) + 1
+                    miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
+                elif exp_info['Task'] == 'twoBack':
+                    # target is second stim of same kind
+                    target_idx = np.random.choice(len(miniblock_stimuli) - 2) + 2
+                    miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
+            else:
+                target_idx = None
+
+            for k_stim, stim_file in enumerate(miniblock_stimuli):
                 trial_clock.reset()
                 onset_time = run_clock.getTime()
-                stim_image.image = stim
+                stim_image.image = stim_file
                 width, height = stim_image.size
-                new_shape = (1. * (width / height), 1.)
+                new_shape = (STIMULUS_HEIGHT * (width / height), STIMULUS_HEIGHT)
                 stim_image.setSize(new_shape)
                 task_responses, _ = draw(win=window, stim=stim_image,
                                          duration=IMAGE_DURATION,
                                          clock=run_clock)
-                stim_image.size = None
+                stim_image.size = None  # clear size
                 duration = trial_clock.getTime()
                 isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
                 rest_responses, _ = draw(win=window, stim=crosshair,
                                          duration=isi_dur, clock=run_clock)
-                relative_stim_file = op.sep.join(stim.split(op.sep)[-2:])
-                subcategory = stim.split(op.sep)[-2]
+                relative_stim_file = op.sep.join(stim_file.split(op.sep)[-2:])
+                subcategory = stim_file.split(op.sep)[-2]
 
-                trial_type = 'baseline'
+                if k_stim == target_idx:
+                    trial_type = exp_info['Task']
+                else:
+                    trial_type = 'baseline'
 
                 # Log info
                 run_data['onset'].append(onset_time)
