@@ -1,0 +1,39 @@
+{
+    "accuracy": {
+        "Description": "Participant performance. Trials are automatically correct unless there is a false alarm or if the trial is a task trial and the participant gets it wrong.",
+        "Levels": {
+            "0": "Incorrect",
+            "1": "Correct"
+        },
+        "LongName": "accuracy"
+    },
+    "category": {
+        "Description": "Overall stimulus category",
+        "Levels": {
+            "bodies": "",
+            "characters": "",
+            "faces": "",
+            "objects": "",
+            "places": ""
+        },
+        "LongName": "category"
+    },
+    "classification": {
+        "Description": "How trial accuracy is labeled.",
+        "Levels": {
+            "false_negative": "An incorrect non-press on a task target trial. Also referred to as a \"miss\".",
+            "false_positive": "An incorrect button-press on a baseline trial. Also referred to as a \"false alarm\".",
+            "true_negative": "A correct non-press on a baseline trial.",
+            "true_positive": "A correct button-press on a task target trial. Also referred to as a \"hit\"."
+        },
+        "LongName": "performance classification"
+    },
+    "miniblock_number": {
+        "Description": "Index of the block to which each trial belongs",
+        "LongName": "miniblock number"
+    },
+    "subcategory": {
+        "Description": "Subtype of the overall category (e.g., \"car\" under \"objects\").",
+        "LongName": "subcategory"
+    }
+}

@@ -152,7 +152,7 @@ if __name__ == '__main__':
     # Remember to turn fullscr to True for the real deal.
     exp_info = {'Subject': '',
                 'Session': '',
-                'Task': ['oddball', 'oneBack', 'twoBack'],
+                'Task': ['Oddball', 'OneBack', 'TwoBack'],
                 'Image Set': ['default', 'alternate', 'both'],
                 'Number of Runs': 4,
                 'BioPac': ['No', 'Yes']}
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
     base_name = 'sub-{0}_ses-{1}_task-localizer{2}'.format(
         exp_info['Subject'].zfill(2), exp_info['Session'].zfill(2),
-        exp_info['Task'].title())
+        exp_info['Task'])
 
     # save a log file for detail verbose info
     filename = op.join(script_dir, 'data/{0}_events'.format(base_name))
@@ -203,10 +203,10 @@ if __name__ == '__main__':
         colorSpace='rgb',
         opacity=1,
         depth=-1.0)
-    if exp_info['Task'] == 'oddball':
+    if exp_info['Task'] == 'Oddball':
         instruction_text = 'Fixate. Press a button when a scrambled image appears.'
-    elif exp_info['Task'] == 'twoBack':
-        instruction_text = 'Fixate. Press a button when an image repeats on sequential trials.'
+    elif exp_info['Task'] == 'TwoBack':
+        instruction_text = 'Fixate. Press a button when an image repeats with one intervening image.'
     else:
         instruction_text = 'Fixate. Press a button when an image repeats on sequential trials.'
     instruction_text_box = visual.TextStim(
@@ -378,15 +378,15 @@ if __name__ == '__main__':
                                                       replace=False))
             if task_miniblocks[j_miniblock] == 1:
                 # Adjust stimuli based on task
-                if exp_info['Task'] == 'oddball':
+                if exp_info['Task'] == 'Oddball':
                     target_idx = np.random.choice(len(miniblock_stimuli))
                     scrambled_stim = np.random.choice(scrambled_stimuli)
                     miniblock_stimuli[target_idx] = scrambled_stim
-                elif exp_info['Task'] == 'oneBack':
+                elif exp_info['Task'] == 'OneBack':
                     # target is second stim of same kind
                     target_idx = np.random.choice(len(miniblock_stimuli) - 1) + 1
                     miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
-                elif exp_info['Task'] == 'twoBack':
+                elif exp_info['Task'] == 'TwoBack':
                     # target is second stim of same kind
                     target_idx = np.random.choice(len(miniblock_stimuli) - 2) + 2
                     miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
@@ -416,7 +416,7 @@ if __name__ == '__main__':
                 subcategory = stim_file.split(op.sep)[-2]
 
                 if k_stim == target_idx:
-                    trial_type = exp_info['Task']
+                    trial_type = exp_info['Task'].lower()
                 else:
                     trial_type = 'baseline'
 
