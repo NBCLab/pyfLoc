@@ -397,9 +397,6 @@ if __name__ == '__main__':
                 trial_clock.reset()
                 onset_time = run_clock.getTime()
                 stim_image.image = stim_file
-                width, height = stim_image.size
-                new_shape = (STIMULUS_HEIGHT * (width / height), STIMULUS_HEIGHT)
-                stim_image.setSize(new_shape)
                 task_responses, _ = draw(win=window, stim=stim_image,
                                          duration=IMAGE_DURATION,
                                          clock=run_clock)
