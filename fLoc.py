@@ -27,6 +27,9 @@ RESPONSE_WINDOW = 1.  # time for participants to response to a target stimulus
 
 
 def allocate_responses(responses, response_times, events_df, response_window=1):
+    """
+    Assign responses to task trials.
+    """
     # Let's start by locating target trials
     task_types = ['oddball', 'oneBack', 'twoBack']
     response_times = response_times[:]  # copy
@@ -38,7 +41,6 @@ def allocate_responses(responses, response_times, events_df, response_window=1):
     events_df['classification'] = 'true_negative'
     events_df.loc[target_trial_idx, 'accuracy'] = 0  # default to miss
     events_df.loc[target_trial_idx, 'classification'] = 'false_negative'
-    print(response_times)
 
     # Log hits
     for trial_idx in events_df.index[target_trial_idx]:
@@ -53,8 +55,6 @@ def allocate_responses(responses, response_times, events_df, response_window=1):
             else:
                 keep_idx.append(response_times.index(rt))
         response_times = [response_times[i] for i in sorted(keep_idx)]
-    print('after logging hits')
-    print(response_times)
 
     # Log false alarms
     for trial_idx in events_df.index[nontarget_trial_idx]:
@@ -228,6 +228,7 @@ if __name__ == '__main__':
         image=None,
         ori=0,
         pos=(0, 0),
+        height=1,
         color=[1, 1, 1],
         colorSpace='rgb',
         opacity=1,
@@ -297,6 +298,17 @@ if __name__ == '__main__':
         stimuli[category] = stimulus_files
     scrambled_stimuli = glob(op.join(script_dir, 'stimuli/scrambled/*.jpg'))
 
+    # Determine which trials will be task
+    # This might be overly convoluted, but it maximizes balance between
+    # task/non-task instead of just sampling with set probabilities
+    nontask_rate = 1 - TASK_RATE
+    task_mult = 1 / np.minimum(TASK_RATE, nontask_rate)
+    n_task = int(task_mult * TASK_RATE)
+    n_nontask = int(task_mult * nontask_rate)
+    grabber_list = [1] * n_task + [0] * n_nontask
+    n_dupes = int(np.ceil(N_BLOCKS / len(grabber_list)))
+    task_miniblocks = grabber_list * n_dupes
+
     # Scanner runtime
     # ---------------
     global_clock = core.Clock()  # to track the time since experiment started
@@ -314,25 +326,18 @@ if __name__ == '__main__':
 
         miniblock_categories = randomize_carefully(list(stimuli.keys()),
                                                    n_blocks_per_condition)
-
-        # Determine which trials will be task
-        # This might be overly convoluted, but it maximizes balance between
-        # task/non-task instead of just sampling with set probabilities
-        nontask_rate = 1 - TASK_RATE
-        task_mult = 1 / np.minimum(TASK_RATE, nontask_rate)
-        n_task = int(task_mult * TASK_RATE)
-        n_nontask = int(task_mult * nontask_rate)
-        grabber_list = [1] * n_task + [0] * n_nontask
-        n_dupes = int(np.ceil(N_BLOCKS / len(grabber_list)))
-        task_miniblocks = grabber_list * n_dupes
         np.random.shuffle(task_miniblocks)
+
+        # Let's set all of the stimuli ahead of time
 
         # Scanner runtime
         # ---------------
         # Wait for trigger from scanner.
         if i_run == 0:
+            # Instructions for the first run
             instruction_text_box.draw()
         else:
+            # Performance for the rest of the runs
             hit_count = (run_frame['classification'] == 'true_positive').sum()
             n_probes = run_frame['classification'].isin(['false_negative', 'true_positive']).sum()
             hit_rate = hit_count / n_probes
@@ -349,7 +354,8 @@ if __name__ == '__main__':
             ser.write('FF')
 
         run_clock.reset()
-        all_responses, all_response_times = [], []
+
+        # Show countdown
         countdown_sec = COUNTDOWN_DURATION
         remaining_time = COUNTDOWN_DURATION
         countdown_text_box.setText(countdown_sec)
@@ -370,6 +376,7 @@ if __name__ == '__main__':
         run_data['subcategory'].append('n/a')
         run_data['miniblock_number'].append('n/a')
 
+        run_responses, run_response_times = [], []
         for j_miniblock, category in enumerate(miniblock_categories):
             miniblock_clock.reset()
             # Block of stimuli
@@ -400,15 +407,14 @@ if __name__ == '__main__':
                 task_responses, _ = draw(win=window, stim=stim_image,
                                          duration=IMAGE_DURATION,
                                          clock=run_clock)
-                all_responses += [resp[0] for resp in task_responses]
-                all_response_times += [resp[1] for resp in task_responses]
-                stim_image.size = None  # clear size
                 duration = trial_clock.getTime()
                 isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
                 rest_responses, _ = draw(win=window, stim=crosshair,
                                          duration=isi_dur, clock=run_clock)
-                all_responses += [resp[0] for resp in rest_responses]
-                all_response_times += [resp[1] for resp in rest_responses]
+                run_responses += [resp[0] for resp in task_responses]
+                run_response_times += [resp[1] for resp in task_responses]
+                run_responses += [resp[0] for resp in rest_responses]
+                run_response_times += [resp[1] for resp in rest_responses]
                 relative_stim_file = op.sep.join(stim_file.split(op.sep)[-2:])
                 subcategory = stim_file.split(op.sep)[-2]
 
@@ -428,9 +434,7 @@ if __name__ == '__main__':
             miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
-        run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
-                         index=False, float_format='%.2f')
-        run_frame = allocate_responses(all_responses, all_response_times, run_frame,
+        run_frame = allocate_responses(run_responses, run_response_times, run_frame,
                                        response_window=RESPONSE_WINDOW)
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
                          index=False, float_format='%.2f')
@@ -443,8 +447,6 @@ if __name__ == '__main__':
         if exp_info['BioPac'] == 'Yes':
             ser.write('00')
 
-        print(all_responses)
-        print(all_response_times)
         print('Total duration of run: {}'.format(run_clock.getTime()))
     # end run_loop
 
