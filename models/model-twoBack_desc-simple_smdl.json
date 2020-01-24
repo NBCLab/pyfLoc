@@ -1,0 +1,164 @@
+{
+  "Name": "fLoc_twoBack_model1",
+  "Description": "Simple comparisons for the VPN lab's functional localizer task, twoBack version",
+  "Input": {
+    "task": "localizerOddball"
+  },
+  "Steps": [
+    {
+      "Level": "run",
+      "Transformations": [
+        {
+          "Name": "Factor",
+          "Input": [
+            "category"
+          ]
+        },
+        {
+          "Name": "Convolve",
+          "Input": [
+            "category.bodies",
+            "category.characters",
+            "category.faces",
+            "category.objects",
+            "category.places",
+            "trial_type.twoBack"
+          ]
+        }
+      ],
+      "Model": {
+        "X": [
+          "category.bodies",
+          "category.characters",
+          "category.faces",
+          "category.objects",
+          "category.places",
+          "trial_type.twoBack",
+          "framewise_displacement",
+          "trans_x",
+          "trans_y",
+          "trans_z",
+          "rot_x",
+          "rot_y",
+          "rot_z",
+          "a_comp_cor_00",
+          "a_comp_cor_01",
+          "a_comp_cor_02",
+          "a_comp_cor_03",
+          "a_comp_cor_04",
+          "a_comp_cor_05"
+        ]
+      },
+      "Contrasts": [
+        {
+          "Name": "bodies_vs_others",
+          "ConditionList": [
+            "category.bodies",
+            "category.characters",
+            "category.faces",
+            "category.objects",
+            "category.places"
+          ],
+          "Weights": [
+            1,
+            -0.25,
+            -0.25,
+            -0.25,
+            -0.25
+          ],
+          "Type": "t"
+        },
+        {
+          "Name": "characters_vs_others",
+          "ConditionList": [
+            "category.bodies",
+            "category.characters",
+            "category.faces",
+            "category.objects",
+            "category.places"
+          ],
+          "Weights": [
+            -0.25,
+            1,
+            -0.25,
+            -0.25,
+            -0.25
+          ],
+          "Type": "t"
+        },
+        {
+          "Name": "faces_vs_others",
+          "ConditionList": [
+            "category.bodies",
+            "category.characters",
+            "category.faces",
+            "category.objects",
+            "category.places"
+          ],
+          "Weights": [
+            -0.25,
+            -0.25,
+            1,
+            -0.25,
+            -0.25
+          ],
+          "Type": "t"
+        },
+        {
+          "Name": "objects_vs_others",
+          "ConditionList": [
+            "category.bodies",
+            "category.characters",
+            "category.faces",
+            "category.objects",
+            "category.places"
+          ],
+          "Weights": [
+            -0.25,
+            -0.25,
+            -0.25,
+            1,
+            -0.25
+          ],
+          "Type": "t"
+        },
+        {
+          "Name": "places_vs_others",
+          "ConditionList": [
+            "category.bodies",
+            "category.characters",
+            "category.faces",
+            "category.objects",
+            "category.places"
+          ],
+          "Weights": [
+            -0.25,
+            -0.25,
+            -0.25,
+            -0.25,
+            1
+          ],
+          "Type": "t"
+        }
+      ]
+    },
+    {
+      "Level": "session",
+      "DummyContrasts": {
+        "Type": "FEMA"
+      }
+    },
+    {
+      "Level": "subject",
+      "DummyContrasts": {
+        "Type": "FEMA"
+      }
+    },
+    {
+      "Level": "dataset",
+      "DummyContrasts": {
+        "Type": "t"
+      }
+    }
+  ]
+}
