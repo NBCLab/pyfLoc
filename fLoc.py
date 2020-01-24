@@ -37,8 +37,12 @@ def allocate_responses(responses, response_times, events_df, response_window=1):
     nontarget_trial_idx = ~target_trial_idx
 
     events_df['response_time'] = 'n/a'
-    events_df['accuracy'] = 1  # no-response is default, so correct is too
-    events_df['classification'] = 'true_negative'
+    events_df['accuracy'] = 'n/a'
+    events_df['classification'] = 'n/a'
+
+    # Defaults
+    events_df.loc[events_df['trial_type'] == 'baseline', 'classification'] = 1
+    events_df.loc[events_df['trial_type'] == 'baseline', 'classification'] = 'true_negative'
     events_df.loc[target_trial_idx, 'accuracy'] = 0  # default to miss
     events_df.loc[target_trial_idx, 'classification'] = 'false_negative'
 
