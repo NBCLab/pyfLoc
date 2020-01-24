@@ -19,8 +19,8 @@ TOTAL_DURATION = 240  # four minutes
 END_SCREEN_DURATION = 2
 N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI))
 N_BLOCKS = int(np.floor(N_BLOCKS))
-TOTAL_DURATION = 252  # 4:12, giving time for lead-in and ending fixations
-N_BLOCKS = 40
+TOTAL_DURATION = 240  # 4:12, giving time for lead-in and ending fixations
+N_BLOCKS = 36  # six conditions (including baseline)
 TASK_RATE = 0.5  # rate of actual tasks throughout scan. Should be specified as fraction
 STIMULUS_HEIGHT = 1.  # height for images
 RESPONSE_WINDOW = 1.  # time for participants to response to a target stimulus
@@ -288,25 +288,29 @@ if __name__ == '__main__':
             'places': ['house', 'corridor'],
         }
 
-    n_blocks_per_condition = int(np.floor(N_BLOCKS / len(stimulus_folders.keys())))
-
     stimuli = {}
     for category in stimulus_folders.keys():
         stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
                           stimulus_folder in stimulus_folders[category]]
         stimulus_files = [item for sublist in stimulus_files for item in sublist]
         stimuli[category] = stimulus_files
+    stimuli['baseline'] = None  # baseline trials just have fixation
+    n_categories = len(stimuli.keys())
     scrambled_stimuli = glob(op.join(script_dir, 'stimuli/scrambled/*.jpg'))
+    n_blocks_per_category = int(np.floor(N_BLOCKS / n_categories))
 
     # Determine which trials will be task
     # This might be overly convoluted, but it maximizes balance between
     # task/non-task instead of just sampling with set probabilities
     nontask_rate = 1 - TASK_RATE
     task_mult = 1 / np.minimum(TASK_RATE, nontask_rate)
-    n_task = int(task_mult * TASK_RATE)
-    n_nontask = int(task_mult * nontask_rate)
-    grabber_list = [1] * n_task + [0] * n_nontask
-    n_dupes = int(np.ceil(N_BLOCKS / len(grabber_list)))
+    n_task_prop = int(task_mult * TASK_RATE)
+    n_nontask_prop = int(task_mult * nontask_rate)
+    grabber_list = [1] * n_task_prop + [0] * n_nontask_prop
+
+    # We want to ensure that tasks are not assigned to baseline blocks
+    n_nonbaseline_blocks = int(N_BLOCKS * (n_categories - 1) / n_categories)
+    n_dupes = int(np.ceil(n_nonbaseline_blocks / len(grabber_list)))
     task_miniblocks = grabber_list * n_dupes
 
     # Scanner runtime
@@ -325,7 +329,7 @@ if __name__ == '__main__':
                           '{0}_run-{1:02d}_events.tsv'.format(base_name, run_label))
 
         miniblock_categories = randomize_carefully(list(stimuli.keys()),
-                                                   n_blocks_per_condition)
+                                                   n_blocks_per_category)
         np.random.shuffle(task_miniblocks)
 
         # Let's set all of the stimuli ahead of time
@@ -377,60 +381,70 @@ if __name__ == '__main__':
         run_data['miniblock_number'].append('n/a')
 
         run_responses, run_response_times = [], []
+        nonbaseline_block_counter = 0
         for j_miniblock, category in enumerate(miniblock_categories):
             miniblock_clock.reset()
-            # Block of stimuli
-            miniblock_stimuli = list(np.random.choice(stimuli[category],
-                                                      size=N_STIMULI_PER_BLOCK,
-                                                      replace=False))
-            if task_miniblocks[j_miniblock] == 1:
-                # Adjust stimuli based on task
-                if exp_info['Task'] == 'Oddball':
-                    target_idx = np.random.choice(len(miniblock_stimuli))
-                    scrambled_stim = np.random.choice(scrambled_stimuli)
-                    miniblock_stimuli[target_idx] = scrambled_stim
-                elif exp_info['Task'] == 'OneBack':
-                    # target is second stim of same kind
-                    target_idx = np.random.choice(len(miniblock_stimuli) - 1) + 1
-                    miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
-                elif exp_info['Task'] == 'TwoBack':
-                    # target is second stim of same kind
-                    target_idx = np.random.choice(len(miniblock_stimuli) - 2) + 2
-                    miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
+            if category == 'baseline':
+                responses, _ = draw(
+                    win=window, stim=crosshair,
+                    duration=(N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI)),
+                    clock=run_clock)
+                run_responses += [resp[0] for resp in responses]
+                run_response_times += [resp[1] for resp in responses]
             else:
-                target_idx = None
-
-            for k_stim, stim_file in enumerate(miniblock_stimuli):
-                trial_clock.reset()
-                onset_time = run_clock.getTime()
-                stim_image.image = stim_file
-                task_responses, _ = draw(win=window, stim=stim_image,
-                                         duration=IMAGE_DURATION,
-                                         clock=run_clock)
-                duration = trial_clock.getTime()
-                isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
-                rest_responses, _ = draw(win=window, stim=crosshair,
-                                         duration=isi_dur, clock=run_clock)
-                run_responses += [resp[0] for resp in task_responses]
-                run_response_times += [resp[1] for resp in task_responses]
-                run_responses += [resp[0] for resp in rest_responses]
-                run_response_times += [resp[1] for resp in rest_responses]
-                relative_stim_file = op.sep.join(stim_file.split(op.sep)[-2:])
-                subcategory = stim_file.split(op.sep)[-2]
-
-                if k_stim == target_idx:
-                    trial_type = exp_info['Task'].lower()
+                # Block of stimuli
+                miniblock_stimuli = list(np.random.choice(
+                    stimuli[category], size=N_STIMULI_PER_BLOCK, replace=False))
+                if task_miniblocks[nonbaseline_block_counter] == 1:
+                    # Adjust stimuli based on task
+                    if exp_info['Task'] == 'Oddball':
+                        target_idx = np.random.choice(len(miniblock_stimuli))
+                        scrambled_stim = np.random.choice(scrambled_stimuli)
+                        miniblock_stimuli[target_idx] = scrambled_stim
+                    elif exp_info['Task'] == 'OneBack':
+                        # target is second stim of same kind
+                        target_idx = np.random.choice(len(miniblock_stimuli) - 1) + 1
+                        miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
+                    elif exp_info['Task'] == 'TwoBack':
+                        # target is second stim of same kind
+                        target_idx = np.random.choice(len(miniblock_stimuli) - 2) + 2
+                        miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
                 else:
-                    trial_type = 'baseline'
+                    target_idx = None
 
-                # Log info
-                run_data['onset'].append(onset_time)
-                run_data['duration'].append(duration)
-                run_data['trial_type'].append(trial_type)
-                run_data['stim_file'].append(relative_stim_file)
-                run_data['category'].append(category)
-                run_data['subcategory'].append(subcategory)
-                run_data['miniblock_number'].append(j_miniblock + 1)
+                for k_stim, stim_file in enumerate(miniblock_stimuli):
+                    trial_clock.reset()
+                    onset_time = run_clock.getTime()
+                    stim_image.image = stim_file
+                    responses, _ = draw(win=window, stim=[stim_image, crosshair],
+                                        duration=IMAGE_DURATION,
+                                        clock=run_clock)
+                    run_responses += [resp[0] for resp in responses]
+                    run_response_times += [resp[1] for resp in responses]
+                    duration = trial_clock.getTime()
+                    isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
+                    responses, _ = draw(win=window, stim=crosshair,
+                                        duration=isi_dur, clock=run_clock)
+
+                    run_responses += [resp[0] for resp in responses]
+                    run_response_times += [resp[1] for resp in responses]
+                    relative_stim_file = op.sep.join(stim_file.split(op.sep)[-2:])
+                    subcategory = stim_file.split(op.sep)[-2]
+
+                    if k_stim == target_idx:
+                        trial_type = exp_info['Task'].lower()
+                    else:
+                        trial_type = 'category'
+
+                    # Log info
+                    run_data['onset'].append(onset_time)
+                    run_data['duration'].append(duration)
+                    run_data['trial_type'].append(trial_type)
+                    run_data['stim_file'].append(relative_stim_file)
+                    run_data['category'].append(category)
+                    run_data['subcategory'].append(subcategory)
+                    run_data['miniblock_number'].append(j_miniblock + 1)
+                nonbaseline_block_counter += 1
             miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
