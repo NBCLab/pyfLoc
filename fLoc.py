@@ -238,13 +238,13 @@ if __name__ == '__main__':
         opacity=1,
         depth=-1.0,
         interpolate=False)
-    crosshair = visual.TextStim(
+    fixation = visual.TextStim(
         win=window,
         name='fixation',
-        text='+',
+        text=u'\u2022',
         font=u'Arial',
         pos=(0, 0),
-        height=0.14,
+        height=0.05,
         wrapWidth=None,
         ori=0,
         color='red',
@@ -372,7 +372,7 @@ if __name__ == '__main__':
             window.flip()
             remaining_time = COUNTDOWN_DURATION - run_clock.getTime()
             if np.floor(remaining_time) <= countdown_sec:
-                countdown_text_box.setText(countdown_sec + 1)
+                countdown_text_box.setText(countdown_sec)
                 countdown_sec -= 1
 
         real_countdown_duration = run_clock.getTime()
@@ -390,7 +390,7 @@ if __name__ == '__main__':
             miniblock_clock.reset()
             if category == 'baseline':
                 responses, _ = draw(
-                    win=window, stim=crosshair,
+                    win=window, stim=fixation,
                     duration=(N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI)),
                     clock=run_clock)
                 run_responses += [resp[0] for resp in responses]
@@ -420,14 +420,14 @@ if __name__ == '__main__':
                     trial_clock.reset()
                     onset_time = run_clock.getTime()
                     stim_image.image = stim_file
-                    responses, _ = draw(win=window, stim=[stim_image, crosshair],
+                    responses, _ = draw(win=window, stim=[stim_image, fixation],
                                         duration=IMAGE_DURATION,
                                         clock=run_clock)
                     run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
                     duration = trial_clock.getTime()
                     isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
-                    responses, _ = draw(win=window, stim=crosshair,
+                    responses, _ = draw(win=window, stim=fixation,
                                         duration=isi_dur, clock=run_clock)
 
                     run_responses += [resp[0] for resp in responses]
@@ -459,7 +459,7 @@ if __name__ == '__main__':
 
         # Last fixation
         last_iti = TOTAL_DURATION - run_clock.getTime()
-        draw(win=window, stim=crosshair, duration=last_iti, clock=run_clock)
+        draw(win=window, stim=fixation, duration=last_iti, clock=run_clock)
 
         # End recording
         if exp_info['BioPac'] == 'Yes':
