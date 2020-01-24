@@ -1,0 +1,72 @@
+{
+    "category_sets": {
+        "alternate": {
+            "baseline": null,
+            "bodies": [
+                "limb"
+            ],
+            "characters": [
+                "number"
+            ],
+            "faces": [
+                "child"
+            ],
+            "objects": [
+                "instrument"
+            ],
+            "places": [
+                "corridor"
+            ],
+            "scrambled": [
+                "scrambled"
+            ]
+        },
+        "both": {
+            "baseline": null,
+            "bodies": [
+                "body",
+                "limb"
+            ],
+            "characters": [
+                "word",
+                "number"
+            ],
+            "faces": [
+                "adult",
+                "child"
+            ],
+            "objects": [
+                "car",
+                "instrument"
+            ],
+            "places": [
+                "house",
+                "corridor"
+            ],
+            "scrambled": [
+                "scrambled"
+            ]
+        },
+        "default": {
+            "baseline": null,
+            "bodies": [
+                "body"
+            ],
+            "characters": [
+                "word"
+            ],
+            "faces": [
+                "adult"
+            ],
+            "objects": [
+                "car"
+            ],
+            "places": [
+                "house"
+            ],
+            "scrambled": [
+                "scrambled"
+            ]
+        }
+    }
+}

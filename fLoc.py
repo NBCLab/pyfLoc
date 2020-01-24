@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import sys
 import time
+import json
 import serial
 import os.path as op
 from glob import glob
@@ -15,11 +16,10 @@ COUNTDOWN_DURATION = 12
 N_STIMULI_PER_BLOCK = 12
 IMAGE_DURATION = 0.4
 TARGET_ISI = 0.1
-TOTAL_DURATION = 240  # four minutes
 END_SCREEN_DURATION = 2
-N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI))
-N_BLOCKS = int(np.floor(N_BLOCKS))
-TOTAL_DURATION = 240  # 4:12, giving time for lead-in and ending fixations
+# N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI))
+# N_BLOCKS = int(np.floor(N_BLOCKS))
+TOTAL_DURATION = 240  # 4:00, giving time for lead-in and ending fixations
 N_BLOCKS = 36  # six conditions (including baseline)
 TASK_RATE = 0.5  # rate of actual tasks throughout scan. Should be specified as fraction
 STIMULUS_HEIGHT = 1.  # height for images
@@ -151,6 +151,11 @@ if __name__ == '__main__':
     except AttributeError:
         script_dir = op.dirname(op.abspath(__file__))
 
+    # Load configuration file
+    config_file = op.join(script_dir, 'config.json')
+    with open(config_file, 'r') as fo:
+        config = json.load(fo)
+
     # Collect user input
     # ------------------
     # Remember to turn fullscr to True for the real deal.
@@ -165,7 +170,7 @@ if __name__ == '__main__':
         title='Functional localizer: {}'.format(exp_info['Task']),
         order=['Subject', 'Session', 'Task', 'Image Set', 'Number of Runs', 'BioPac'])
     window = visual.Window(
-        fullscr=False,
+        fullscr=True,
         size=(800, 600),
         monitor='testMonitor',
         units='norm',
@@ -267,41 +272,22 @@ if __name__ == '__main__':
 
     # Collect stimulus sets
     n_runs = int(exp_info['Number of Runs'])
-    if exp_info['Image Set'] == 'default':
-        stimulus_folders = {
-            'bodies': ['body'],
-            'characters': ['word'],
-            'faces': ['adult'],
-            'objects': ['car'],
-            'places': ['house'],
-        }
-    elif exp_info['Image Set'] == 'alternate':
-        stimulus_folders = {
-            'bodies': ['limb'],
-            'characters': ['number'],
-            'faces': ['child'],
-            'objects': ['instrument'],
-            'places': ['corridor'],
-        }
-    elif exp_info['Image Set'] == 'both':
-        stimulus_folders = {
-            'bodies': ['body', 'limb'],
-            'characters': ['word', 'number'],
-            'faces': ['adult', 'child'],
-            'objects': ['car', 'instrument'],
-            'places': ['house', 'corridor'],
-        }
+    stimulus_folders = config['category_sets'][exp_info['Image Set']]
+
+    standard_categories = [cat for cat in stimulus_folders.keys() if cat != 'scrambled']
+    n_categories = len(standard_categories)
+    n_blocks_per_category = int(np.floor(N_BLOCKS / n_categories))
 
     stimuli = {}
     for category in stimulus_folders.keys():
-        stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
-                          stimulus_folder in stimulus_folders[category]]
-        stimulus_files = [item for sublist in stimulus_files for item in sublist]
-        stimuli[category] = stimulus_files
-    stimuli['baseline'] = None  # baseline trials just have fixation
-    n_categories = len(stimuli.keys())
-    scrambled_stimuli = glob(op.join(script_dir, 'stimuli/scrambled/*.jpg'))
-    n_blocks_per_category = int(np.floor(N_BLOCKS / n_categories))
+        if stimulus_folders[category] is not None:
+            stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
+                              stimulus_folder in stimulus_folders[category]]
+            # Unravel list of lists
+            stimulus_files = [item for sublist in stimulus_files for item in sublist]
+            stimuli[category] = stimulus_files
+        else:
+            stimuli[category] = None  # baseline trials just have fixation
 
     # Determine which trials will be task
     # This might be overly convoluted, but it maximizes balance between
@@ -332,8 +318,7 @@ if __name__ == '__main__':
         outfile = op.join(script_dir, 'data',
                           '{0}_run-{1:02d}_events.tsv'.format(base_name, run_label))
 
-        miniblock_categories = randomize_carefully(list(stimuli.keys()),
-                                                   n_blocks_per_category)
+        miniblock_categories = randomize_carefully(standard_categories, n_blocks_per_category)
         np.random.shuffle(task_miniblocks)
 
         # Let's set all of the stimuli ahead of time
@@ -402,9 +387,9 @@ if __name__ == '__main__':
                 if task_miniblocks[nonbaseline_block_counter] == 1:
                     # Adjust stimuli based on task
                     if exp_info['Task'] == 'Oddball':
+                        # target is scrambled image
                         target_idx = np.random.choice(len(miniblock_stimuli))
-                        scrambled_stim = np.random.choice(scrambled_stimuli)
-                        miniblock_stimuli[target_idx] = scrambled_stim
+                        miniblock_stimuli[target_idx] = np.random.choice(stimuli['scrambled'])
                     elif exp_info['Task'] == 'OneBack':
                         # target is second stim of same kind
                         target_idx = np.random.choice(len(miniblock_stimuli) - 1) + 1
