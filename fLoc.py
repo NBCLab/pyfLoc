@@ -228,7 +228,7 @@ if __name__ == '__main__':
         image=None,
         ori=0,
         pos=(0, 0),
-        height=1,
+        size=(1, 1),
         color=[1, 1, 1],
         colorSpace='rgb',
         opacity=1,
