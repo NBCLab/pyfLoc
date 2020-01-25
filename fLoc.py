@@ -465,13 +465,6 @@ if __name__ == '__main__':
             miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
-        resp_file = op.join(
-            script_dir, 'data', '{0}_run-{1:02d}_responses.txt'.format(base_name, run_label))
-        rt_file = op.join(
-            script_dir, 'data', '{0}_run-{1:02d}_responsetimes.txt'.format(base_name, run_label))
-        with open(resp_file, 'w') as fo:
-            fo.write('\t'.join(run_responses))
-        np.savetxt(rt_file, run_response_times, delimiter='\t', newline='\n')
         run_frame = allocate_responses(run_frame, run_responses, run_response_times,
                                        response_window=RESPONSE_WINDOW)
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
