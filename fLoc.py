@@ -9,7 +9,7 @@ from glob import glob
 import numpy as np
 import pandas as pd
 
-from psychopy import gui, visual, core, data, event, logging
+from psychopy import gui, visual, core, event, logging
 from psychopy.constants import STARTED, STOPPED
 
 COUNTDOWN_DURATION = 12
@@ -42,8 +42,8 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
     events_df['classification'] = 'n/a'
 
     # Defaults
-    events_df.loc[events_df['trial_type'] == 'baseline', 'classification'] = 1
-    events_df.loc[events_df['trial_type'] == 'baseline', 'classification'] = 'true_negative'
+    events_df.loc[events_df['trial_type'] == 'category', 'classification'] = 1
+    events_df.loc[events_df['trial_type'] == 'category', 'classification'] = 'true_negative'
     events_df.loc[target_trial_idx, 'accuracy'] = 0  # default to miss
     events_df.loc[target_trial_idx, 'classification'] = 'false_negative'
 
@@ -66,9 +66,10 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
     for trial_idx in events_df.index[nontarget_trial_idx]:
         onset = events_df.loc[trial_idx, 'onset']
         if trial_idx == events_df.index.values[-1]:
-            next_onset = onset + response_window
+            next_onset = onset + response_window  # arbitrary duration
         else:
             next_onset = events_df.loc[trial_idx+1, 'onset']
+
         # Looping backwards lets us keep earliest response for RT
         for i_resp, rt in enumerate(response_times[::-1]):
             if onset <= rt < next_onset:
@@ -376,6 +377,7 @@ if __name__ == '__main__':
         for j_miniblock, category in enumerate(miniblock_categories):
             miniblock_clock.reset()
             if category == 'baseline':
+                onset_time = run_clock.getTime()
                 responses, _ = draw(
                     win=window, stim=fixation,
                     duration=(N_STIMULI_PER_BLOCK * TRIAL_DURATION),
@@ -383,6 +385,15 @@ if __name__ == '__main__':
                 run_responses += [resp[0] for resp in responses]
                 run_response_times += [resp[1] for resp in responses]
                 target_idx = None
+
+                # Log info
+                run_data['onset'].append(onset_time)
+                run_data['duration'].append(miniblock_clock.getTime())
+                run_data['trial_type'].append('baseline')
+                run_data['stim_file'].append('n/a')
+                run_data['category'].append('baseline')
+                run_data['subcategory'].append('baseline')
+                run_data['miniblock_number'].append(j_miniblock + 1)
             else:
                 # Block of stimuli
                 miniblock_stimuli = list(np.random.choice(
@@ -403,17 +414,17 @@ if __name__ == '__main__':
                     # Adjust stimuli based on task
                     if exp_info['Task'] == 'Oddball':
                         # target is scrambled image
-                        target_idx = np.random.choice(first_viable_trial, len(miniblock_stimuli))
+                        target_idx = np.random.randint(first_viable_trial, len(miniblock_stimuli))
                         miniblock_stimuli[target_idx] = np.random.choice(stimuli['scrambled'])
                     elif exp_info['Task'] == 'OneBack':
                         # target is second stim of same kind
                         first_viable_trial = np.maximum(first_viable_trial, 1)
-                        target_idx = np.random.choice(first_viable_trial, len(miniblock_stimuli))
+                        target_idx = np.random.randint(first_viable_trial, len(miniblock_stimuli))
                         miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
                     elif exp_info['Task'] == 'TwoBack':
                         # target is second stim of same kind
                         first_viable_trial = np.maximum(first_viable_trial, 2)
-                        target_idx = np.random.choice(first_viable_trial, len(miniblock_stimuli))
+                        target_idx = np.random.randint(first_viable_trial, len(miniblock_stimuli))
                         miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
                 else:
                     target_idx = None
@@ -454,6 +465,13 @@ if __name__ == '__main__':
             miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
+        resp_file = op.join(
+            script_dir, 'data', '{0}_run-{1:02d}_responses.txt'.format(base_name, run_label))
+        rt_file = op.join(
+            script_dir, 'data', '{0}_run-{1:02d}_responsetimes.txt'.format(base_name, run_label))
+        with open(resp_file, 'w') as fo:
+            fo.write('\t'.join(run_responses))
+        np.savetxt(rt_file, run_response_times, delimiter='\t', newline='\n')
         run_frame = allocate_responses(run_frame, run_responses, run_response_times,
                                        response_window=RESPONSE_WINDOW)
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
