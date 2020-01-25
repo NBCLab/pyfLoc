@@ -16,6 +16,7 @@ COUNTDOWN_DURATION = 12
 N_STIMULI_PER_BLOCK = 12
 IMAGE_DURATION = 0.4
 TARGET_ISI = 0.1
+TRIAL_DURATION = IMAGE_DURATION + TARGET_ISI
 END_SCREEN_DURATION = 2
 # N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI))
 # N_BLOCKS = int(np.floor(N_BLOCKS))
@@ -26,7 +27,7 @@ STIMULUS_HEIGHT = 1.  # height for images
 RESPONSE_WINDOW = 1.  # time for participants to response to a target stimulus
 
 
-def allocate_responses(responses, response_times, events_df, response_window=1):
+def allocate_responses(events_df, responses, response_times, response_window=1):
     """
     Assign responses to task trials.
     """
@@ -51,6 +52,7 @@ def allocate_responses(responses, response_times, events_df, response_window=1):
         onset = events_df.loc[trial_idx, 'onset']
         keep_idx = []
         # Looping backwards lets us keep earliest response for RT
+        # Any response is *the* response, so the actual button doesn't matter.
         for i_resp, rt in enumerate(response_times[::-1]):
             if onset <= rt <= (onset + response_window):
                 events_df.loc[trial_idx, 'accuracy'] = 1
@@ -134,7 +136,7 @@ def draw(win, stim, duration, clock):
                 s.draw()
         else:
             stim.draw()
-        keys = event.getKeys(keyList=['1', '2'], timeStamped=clock)
+        keys = event.getKeys(keyList=['1', '2', '3', '4'], timeStamped=clock)
         if keys:
             response.keys.extend(keys)
             response.rt.append(response.clock.getTime())
@@ -376,27 +378,42 @@ if __name__ == '__main__':
             if category == 'baseline':
                 responses, _ = draw(
                     win=window, stim=fixation,
-                    duration=(N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI)),
+                    duration=(N_STIMULI_PER_BLOCK * TRIAL_DURATION),
                     clock=run_clock)
                 run_responses += [resp[0] for resp in responses]
                 run_response_times += [resp[1] for resp in responses]
+                target_idx = None
             else:
                 # Block of stimuli
                 miniblock_stimuli = list(np.random.choice(
                     stimuli[category], size=N_STIMULI_PER_BLOCK, replace=False))
                 if task_miniblocks[nonbaseline_block_counter] == 1:
+                    # Check for last block's target to make sure that two targets don't
+                    # occur within the same response window
+                    if (j_miniblock > 0) and (target_idx is not None):
+                        last_target_onset = (((N_STIMULI_PER_BLOCK + 1) - target_idx) *
+                                             TRIAL_DURATION * -1)
+                        last_target_rw_offset = last_target_onset + RESPONSE_WINDOW
+                        first_viable_trial = int(np.ceil(last_target_rw_offset / TRIAL_DURATION))
+                        first_viable_trial = np.maximum(0, first_viable_trial)
+                        first_viable_trial += 1  # just to give it a one-trial buffer
+                    else:
+                        first_viable_trial = 0
+
                     # Adjust stimuli based on task
                     if exp_info['Task'] == 'Oddball':
                         # target is scrambled image
-                        target_idx = np.random.choice(len(miniblock_stimuli))
+                        target_idx = np.random.choice(first_viable_trial, len(miniblock_stimuli))
                         miniblock_stimuli[target_idx] = np.random.choice(stimuli['scrambled'])
                     elif exp_info['Task'] == 'OneBack':
                         # target is second stim of same kind
-                        target_idx = np.random.choice(len(miniblock_stimuli) - 1) + 1
+                        first_viable_trial = np.maximum(first_viable_trial, 1)
+                        target_idx = np.random.choice(first_viable_trial, len(miniblock_stimuli))
                         miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
                     elif exp_info['Task'] == 'TwoBack':
                         # target is second stim of same kind
-                        target_idx = np.random.choice(len(miniblock_stimuli) - 2) + 2
+                        first_viable_trial = np.maximum(first_viable_trial, 2)
+                        target_idx = np.random.choice(first_viable_trial, len(miniblock_stimuli))
                         miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
                 else:
                     target_idx = None
@@ -411,7 +428,7 @@ if __name__ == '__main__':
                     run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
                     duration = trial_clock.getTime()
-                    isi_dur = np.maximum((IMAGE_DURATION + TARGET_ISI) - duration, 0)
+                    isi_dur = np.maximum(TRIAL_DURATION - duration, 0)
                     responses, _ = draw(win=window, stim=fixation,
                                         duration=isi_dur, clock=run_clock)
 
@@ -437,7 +454,7 @@ if __name__ == '__main__':
             miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
-        run_frame = allocate_responses(run_responses, run_response_times, run_frame,
+        run_frame = allocate_responses(run_frame, run_responses, run_response_times,
                                        response_window=RESPONSE_WINDOW)
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
                          index=False, float_format='%.2f')
