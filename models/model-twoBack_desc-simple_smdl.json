@@ -2,7 +2,7 @@
   "Name": "fLoc_twoBack_model1",
   "Description": "Simple comparisons for the VPN lab's functional localizer task, twoBack version",
   "Input": {
-    "task": "localizerOddball"
+    "task": "localizerTwoBack"
   },
   "Steps": [
     {
@@ -11,7 +11,29 @@
         {
           "Name": "Factor",
           "Input": [
-            "category"
+            "category",
+            "trial_type",
+            "classification"
+          ]
+        },
+        {
+          "Name": "And",
+          "Input": [
+            "trial_type.twoBack",
+            "classification.true_positive"
+          ],
+          "Output": [
+            "hit"
+          ]
+        },
+        {
+          "Name": "And",
+          "Input": [
+            "trial_type.twoBack",
+            "classification.false_negative"
+          ],
+          "Output": [
+            "miss"
           ]
         },
         {
@@ -22,7 +44,9 @@
             "category.faces",
             "category.objects",
             "category.places",
-            "trial_type.twoBack"
+            "hit",
+            "miss",
+            "false_positive"
           ]
         }
       ],
@@ -33,7 +57,9 @@
           "category.faces",
           "category.objects",
           "category.places",
-          "trial_type.twoBack",
+          "hit",
+          "miss",
+          "false_positive",
           "framewise_displacement",
           "trans_x",
           "trans_y",
