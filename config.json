@@ -68,5 +68,16 @@
                 "scrambled"
             ]
         }
+    },
+    "constants": {
+        "COUNTDOWN_DURATION": 12,
+        "END_SCREEN_DURATION": 2,
+        "IMAGE_DURATION": 0.4,
+        "N_BLOCKS": 36,
+        "N_STIMULI_PER_BLOCK": 12,
+        "RESPONSE_WINDOW": 1,
+        "TARGET_ISI": 0.1,
+        "TASK_RATE": 0.5,
+        "TOTAL_DURATION": 240
     }
 }
