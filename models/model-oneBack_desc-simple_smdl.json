@@ -2,7 +2,7 @@
   "Name": "fLoc_oneBack_model1",
   "Description": "Simple comparisons for the VPN lab's functional localizer task, oneBack version",
   "Input": {
-    "task": "localizerOddball"
+    "task": "localizerOneBack"
   },
   "Steps": [
     {
@@ -11,7 +11,29 @@
         {
           "Name": "Factor",
           "Input": [
-            "category"
+            "category",
+            "trial_type",
+            "classification"
+          ]
+        },
+        {
+          "Name": "And",
+          "Input": [
+            "trial_type.oneBack",
+            "classification.true_positive"
+          ],
+          "Output": [
+            "hit"
+          ]
+        },
+        {
+          "Name": "And",
+          "Input": [
+            "trial_type.oneBack",
+            "classification.false_negative"
+          ],
+          "Output": [
+            "miss"
           ]
         },
         {
@@ -22,7 +44,10 @@
             "category.faces",
             "category.objects",
             "category.places",
-            "trial_type.oneBack"
+            "hit",
+            "miss",
+            "false_positive",
+            "trial_type.countdown"
           ]
         }
       ],
@@ -33,7 +58,10 @@
           "category.faces",
           "category.objects",
           "category.places",
-          "trial_type.oneBack",
+          "hit",
+          "miss",
+          "false_positive",
+          "trial_type.countdown",
           "framewise_displacement",
           "trans_x",
           "trans_y",

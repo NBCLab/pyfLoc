@@ -11,7 +11,29 @@
         {
           "Name": "Factor",
           "Input": [
-            "category"
+            "category",
+            "trial_type",
+            "classification"
+          ]
+        },
+        {
+          "Name": "And",
+          "Input": [
+            "trial_type.oddball",
+            "classification.true_positive"
+          ],
+          "Output": [
+            "hit"
+          ]
+        },
+        {
+          "Name": "And",
+          "Input": [
+            "trial_type.oddball",
+            "classification.false_negative"
+          ],
+          "Output": [
+            "miss"
           ]
         },
         {
@@ -22,7 +44,10 @@
             "category.faces",
             "category.objects",
             "category.places",
-            "trial_type.oddball"
+            "hit",
+            "miss",
+            "false_positive",
+            "trial_type.countdown"
           ]
         }
       ],
@@ -33,7 +58,10 @@
           "category.faces",
           "category.objects",
           "category.places",
-          "trial_type.oddball",
+          "hit",
+          "miss",
+          "false_positive",
+          "trial_type.countdown",
           "framewise_displacement",
           "trans_x",
           "trans_y",
