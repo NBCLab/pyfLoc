@@ -46,7 +46,8 @@
             "category.places",
             "hit",
             "miss",
-            "false_positive"
+            "false_positive",
+            "trial_type.countdown"
           ]
         }
       ],
@@ -60,6 +61,7 @@
           "hit",
           "miss",
           "false_positive",
+          "trial_type.countdown",
           "framewise_displacement",
           "trans_x",
           "trans_y",
