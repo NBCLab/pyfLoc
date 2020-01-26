@@ -9,3 +9,7 @@ The Python code for this task is released under our selected license, but the st
 This functional localizer task uses a mini-block design with different categories of images.
 To keep participants focused on the task, there is also a behavioral task that participants will perform throughout the localizer.
 There are three options for this task: oddball, one-back, and two-back.
+
+### Differences from the original task
+
+While we have attempted to maximize similarity between this task and the VPN lab's task, there are differences.

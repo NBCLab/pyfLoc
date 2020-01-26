@@ -12,20 +12,6 @@ import pandas as pd
 from psychopy import gui, visual, core, event, logging
 from psychopy.constants import STARTED, STOPPED
 
-COUNTDOWN_DURATION = 12
-N_STIMULI_PER_BLOCK = 12
-IMAGE_DURATION = 0.4
-TARGET_ISI = 0.1
-TRIAL_DURATION = IMAGE_DURATION + TARGET_ISI
-END_SCREEN_DURATION = 2
-# N_BLOCKS = (TOTAL_DURATION - COUNTDOWN_DURATION) / (N_STIMULI_PER_BLOCK * (IMAGE_DURATION + TARGET_ISI))
-# N_BLOCKS = int(np.floor(N_BLOCKS))
-TOTAL_DURATION = 240  # 4:00, giving time for lead-in and ending fixations
-N_BLOCKS = 36  # six conditions (including baseline)
-TASK_RATE = 0.5  # rate of actual tasks throughout scan. Should be specified as fraction
-STIMULUS_HEIGHT = 1.  # height for images
-RESPONSE_WINDOW = 1.  # time for participants to response to a target stimulus
-
 
 def allocate_responses(events_df, responses, response_times, response_window=1):
     """
@@ -158,6 +144,8 @@ if __name__ == '__main__':
     config_file = op.join(script_dir, 'config.json')
     with open(config_file, 'r') as fo:
         config = json.load(fo)
+    constants = config['constants']
+    constants['TRIAL_DURATION'] = constants['IMAGE_DURATION'] + constants['TARGET_ISI']
 
     # Collect user input
     # ------------------
@@ -279,7 +267,7 @@ if __name__ == '__main__':
 
     standard_categories = [cat for cat in stimulus_folders.keys() if cat != 'scrambled']
     n_categories = len(standard_categories)
-    n_blocks_per_category = int(np.floor(N_BLOCKS / n_categories))
+    n_blocks_per_category = int(np.floor(constants['N_BLOCKS'] / n_categories))
 
     stimuli = {}
     for category in stimulus_folders.keys():
@@ -295,14 +283,14 @@ if __name__ == '__main__':
     # Determine which trials will be task
     # This might be overly convoluted, but it maximizes balance between
     # task/non-task instead of just sampling with set probabilities
-    nontask_rate = 1 - TASK_RATE
-    task_mult = 1 / np.minimum(TASK_RATE, nontask_rate)
-    n_task_prop = int(task_mult * TASK_RATE)
+    nontask_rate = 1 - constants['TASK_RATE']
+    task_mult = 1 / np.minimum(constants['TASK_RATE'], nontask_rate)
+    n_task_prop = int(task_mult * constants['TASK_RATE'])
     n_nontask_prop = int(task_mult * nontask_rate)
     grabber_list = [1] * n_task_prop + [0] * n_nontask_prop
 
     # We want to ensure that tasks are not assigned to baseline blocks
-    n_nonbaseline_blocks = int(N_BLOCKS * (n_categories - 1) / n_categories)
+    n_nonbaseline_blocks = int(constants['N_BLOCKS'] * (n_categories - 1) / n_categories)
     n_dupes = int(np.ceil(n_nonbaseline_blocks / len(grabber_list)))
     task_miniblocks = grabber_list * n_dupes
 
@@ -352,13 +340,13 @@ if __name__ == '__main__':
         run_clock.reset()
 
         # Show countdown
-        countdown_sec = COUNTDOWN_DURATION
-        remaining_time = COUNTDOWN_DURATION
+        countdown_sec = constants['COUNTDOWN_DURATION']
+        remaining_time = constants['COUNTDOWN_DURATION']
         countdown_text_box.setText(countdown_sec)
         while remaining_time > 0:
             countdown_text_box.draw()
             window.flip()
-            remaining_time = COUNTDOWN_DURATION - run_clock.getTime()
+            remaining_time = constants['COUNTDOWN_DURATION'] - run_clock.getTime()
             if np.floor(remaining_time) <= countdown_sec:
                 countdown_text_box.setText(countdown_sec)
                 countdown_sec -= 1
@@ -380,7 +368,7 @@ if __name__ == '__main__':
                 onset_time = run_clock.getTime()
                 responses, _ = draw(
                     win=window, stim=fixation,
-                    duration=(N_STIMULI_PER_BLOCK * TRIAL_DURATION),
+                    duration=(constants['N_STIMULI_PER_BLOCK'] * constants['TRIAL_DURATION']),
                     clock=run_clock)
                 run_responses += [resp[0] for resp in responses]
                 run_response_times += [resp[1] for resp in responses]
@@ -397,15 +385,16 @@ if __name__ == '__main__':
             else:
                 # Block of stimuli
                 miniblock_stimuli = list(np.random.choice(
-                    stimuli[category], size=N_STIMULI_PER_BLOCK, replace=False))
+                    stimuli[category], size=constants['N_STIMULI_PER_BLOCK'], replace=False))
                 if task_miniblocks[nonbaseline_block_counter] == 1:
                     # Check for last block's target to make sure that two targets don't
                     # occur within the same response window
                     if (j_miniblock > 0) and (target_idx is not None):
-                        last_target_onset = (((N_STIMULI_PER_BLOCK + 1) - target_idx) *
-                                             TRIAL_DURATION * -1)
-                        last_target_rw_offset = last_target_onset + RESPONSE_WINDOW
-                        first_viable_trial = int(np.ceil(last_target_rw_offset / TRIAL_DURATION))
+                        last_target_onset = (((constants['N_STIMULI_PER_BLOCK'] + 1) - target_idx) *
+                                             constants['TRIAL_DURATION'] * -1)
+                        last_target_rw_offset = last_target_onset + constants['RESPONSE_WINDOW']
+                        first_viable_trial = int(np.ceil(last_target_rw_offset /
+                                                         constants['TRIAL_DURATION']))
                         first_viable_trial = np.maximum(0, first_viable_trial)
                         first_viable_trial += 1  # just to give it a one-trial buffer
                     else:
@@ -434,12 +423,12 @@ if __name__ == '__main__':
                     onset_time = run_clock.getTime()
                     stim_image.image = stim_file
                     responses, _ = draw(win=window, stim=[stim_image, fixation],
-                                        duration=IMAGE_DURATION,
+                                        duration=constants['IMAGE_DURATION'],
                                         clock=run_clock)
                     run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
                     duration = trial_clock.getTime()
-                    isi_dur = np.maximum(TRIAL_DURATION - duration, 0)
+                    isi_dur = np.maximum(constants['TRIAL_DURATION'] - duration, 0)
                     responses, _ = draw(win=window, stim=fixation,
                                         duration=isi_dur, clock=run_clock)
 
@@ -466,12 +455,12 @@ if __name__ == '__main__':
 
         run_frame = pd.DataFrame(run_data)
         run_frame = allocate_responses(run_frame, run_responses, run_response_times,
-                                       response_window=RESPONSE_WINDOW)
+                                       response_window=constants['RESPONSE_WINDOW'])
         run_frame.to_csv(outfile, sep='\t', line_terminator='\n', na_rep='n/a',
                          index=False, float_format='%.2f')
 
         # Last fixation
-        last_iti = TOTAL_DURATION - run_clock.getTime()
+        last_iti = constants['TOTAL_DURATION'] - run_clock.getTime()
         draw(win=window, stim=fixation, duration=last_iti, clock=run_clock)
 
         # End recording
@@ -493,7 +482,8 @@ if __name__ == '__main__':
     performance_str = ('Hits: {0}/{1} ({2:.02f}%)\nFalse alarms: {3}').format(
         hit_count, n_probes, hit_rate, fa_count)
     performance_screen.setText(performance_str)
-    draw(win=window, stim=performance_screen, duration=END_SCREEN_DURATION, clock=global_clock)
+    draw(win=window, stim=performance_screen,
+         duration=constants['END_SCREEN_DURATION'], clock=global_clock)
     window.flip()
 
     logging.flush()
