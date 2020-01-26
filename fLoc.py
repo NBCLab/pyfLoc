@@ -98,6 +98,43 @@ def close_on_esc(win):
         core.quit()
 
 
+def draw_countdown(win, stim, duration):
+    """
+    Draw a countdown by the second
+    """
+    countdown_clock = core.Clock()
+    countdown_sec = duration
+    remaining_time = duration
+    stim.setText(countdown_sec)
+    while remaining_time > 0:
+        stim.draw()
+        close_on_esc(win)
+        win.flip()
+        remaining_time = duration - countdown_clock.getTime()
+        if np.floor(remaining_time) <= countdown_sec:
+            stim.setText(countdown_sec)
+            countdown_sec -= 1
+
+
+def draw_until_keypress(win, stim, continueKeys=['5']):
+    """
+    """
+    response = event.BuilderKeyResponse()
+    win.callOnFlip(response.clock.reset)
+    event.clearEvents(eventType='keyboard')
+    while True:
+        if isinstance(stim, list):
+            for s in stim:
+                s.draw()
+        else:
+            stim.draw()
+        keys = event.getKeys(keyList=continueKeys)
+        if any([ck in keys for ck in continueKeys]):
+            return
+        close_on_esc(win)
+        win.flip()
+
+
 def draw(win, stim, duration, clock):
     """
     Draw stimulus for a given duration.
@@ -115,7 +152,7 @@ def draw(win, stim, duration, clock):
     response.tStart = start_time
     response.frameNStart = 0
     response.status = STARTED
-    window.callOnFlip(response.clock.reset)
+    win.callOnFlip(response.clock.reset)
     event.clearEvents(eventType='keyboard')
     while time.time() - start_time < duration:
         if isinstance(stim, list):
@@ -312,14 +349,12 @@ if __name__ == '__main__':
         miniblock_categories = randomize_carefully(standard_categories, n_blocks_per_category)
         np.random.shuffle(task_miniblocks)
 
-        # Let's set all of the stimuli ahead of time
-
         # Scanner runtime
         # ---------------
         # Wait for trigger from scanner.
         if i_run == 0:
             # Instructions for the first run
-            instruction_text_box.draw()
+            draw_until_keypress(win=window, stim=instruction_text_box)
         else:
             # Performance for the rest of the runs
             hit_count = (run_frame['classification'] == 'true_positive').sum()
@@ -330,8 +365,7 @@ if __name__ == '__main__':
                 hit_count, n_probes, hit_rate, fa_count)
             performance_screen.setText(performance_str)
             performance_screen.draw()
-        window.flip()
-        event.waitKeys(keyList=['5'])
+            draw_until_keypress(win=window, stim=performance_screen)
 
         # Start recording
         if exp_info['BioPac'] == 'Yes':
@@ -340,16 +374,8 @@ if __name__ == '__main__':
         run_clock.reset()
 
         # Show countdown
-        countdown_sec = constants['COUNTDOWN_DURATION']
-        remaining_time = constants['COUNTDOWN_DURATION']
-        countdown_text_box.setText(countdown_sec)
-        while remaining_time > 0:
-            countdown_text_box.draw()
-            window.flip()
-            remaining_time = constants['COUNTDOWN_DURATION'] - run_clock.getTime()
-            if np.floor(remaining_time) <= countdown_sec:
-                countdown_text_box.setText(countdown_sec)
-                countdown_sec -= 1
+        draw_countdown(win=window, stim=countdown_text_box,
+                       duration=constants['COUNTDOWN_DURATION'])
 
         real_countdown_duration = run_clock.getTime()
         run_data['onset'].append(0)
