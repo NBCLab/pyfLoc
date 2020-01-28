@@ -192,7 +192,7 @@ if __name__ == '__main__':
                 'Task': ['Oddball', 'OneBack', 'TwoBack'],
                 'Image Set': ['default', 'alternate', 'both'],
                 'Number of Runs': 4,
-                'BioPac': ['No', 'Yes']}
+                'BioPac': ['Yes', 'No']}
     dlg = gui.DlgFromDict(
         exp_info,
         title='Functional localizer: {}'.format(exp_info['Task']),
