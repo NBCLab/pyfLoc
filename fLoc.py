@@ -3,6 +3,7 @@ import sys
 import time
 import json
 import serial
+import os
 import os.path as op
 from glob import glob
 
@@ -189,7 +190,7 @@ if __name__ == '__main__':
     # Remember to turn fullscr to True for the real deal.
     exp_info = {'Subject': '',
                 'Session': '',
-                'Task': ['Oddball', 'OneBack', 'TwoBack'],
+                'Task': ['OneBack', 'TwoBack', 'Oddball'],
                 'Image Set': ['default', 'alternate', 'both'],
                 'Number of Runs': 4,
                 'BioPac': ['Yes', 'No']}
@@ -214,6 +215,9 @@ if __name__ == '__main__':
     # Establish serial port connection
     if exp_info['BioPac'] == 'Yes':
         ser = serial.Serial('COM2', 115200)
+
+    if not op.exists(op.join(script_dir, 'data')):
+        os.makedirs(op.join(script_dir, 'data'))
 
     # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
     base_name = 'sub-{0}_ses-{1}_task-localizer{2}'.format(
