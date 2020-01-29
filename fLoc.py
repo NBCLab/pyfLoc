@@ -316,7 +316,7 @@ if __name__ == '__main__':
             stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
                               stimulus_folder in stimulus_folders[category]]
             # Unravel list of lists
-            stimulus_files = [item for sublist in stimulus_files for item in sublist]
+            stimulus_files = [op.realpath(item) for sublist in stimulus_files for item in sublist]
             stimuli[category] = stimulus_files
         else:
             stimuli[category] = None  # baseline trials just have fixation
