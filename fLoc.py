@@ -19,7 +19,7 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
     Assign responses to task trials.
     """
     # Let's start by locating target trials
-    task_types = ['oddball', 'oneBack', 'twoBack']
+    task_types = ['oddball', 'oneback', 'twoback']
     response_times = response_times[:]  # copy
     target_trial_idx = events_df['trial_type'].isin(task_types)
     nontarget_trial_idx = ~target_trial_idx
