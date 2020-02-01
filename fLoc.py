@@ -192,7 +192,7 @@ if __name__ == '__main__':
                 'Session': '',
                 'Task': ['OneBack', 'TwoBack', 'Oddball'],
                 'Image Set': ['default', 'alternate', 'both'],
-                'Number of Runs': 4,
+                'Number of Runs': '4',
                 'BioPac': ['Yes', 'No']}
     dlg = gui.DlgFromDict(
         exp_info,
@@ -313,7 +313,7 @@ if __name__ == '__main__':
     stimuli = {}
     for category in stimulus_folders.keys():
         if stimulus_folders[category] is not None:
-            stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.jpg'.format(stimulus_folder))) for
+            stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.png'.format(stimulus_folder))) for
                               stimulus_folder in stimulus_folders[category]]
             # Unravel list of lists
             stimulus_files = [op.realpath(item) for sublist in stimulus_files for item in sublist]
