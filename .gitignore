@@ -2,6 +2,8 @@ data/
 
 # Ignore stimuli. Grab these from the VPNL's repository.
 stimuli/
+stimuli_png/
+original_stimuli/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
