@@ -314,6 +314,7 @@ if __name__ == '__main__':
     for category in stimulus_folders.keys():
         if stimulus_folders[category] is not None:
             stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.png'.format(stimulus_folder))) for
+
                               stimulus_folder in stimulus_folders[category]]
             # Unravel list of lists
             stimulus_files = [op.realpath(item) for sublist in stimulus_files for item in sublist]
@@ -451,6 +452,7 @@ if __name__ == '__main__':
                 for k_stim, stim_file in enumerate(miniblock_stimuli):
                     trial_clock.reset()
                     onset_time = run_clock.getTime()
+                    stim_file = stim_file.replace('\\', '/')
                     stim_image.image = stim_file
                     responses, _ = draw(win=window, stim=[stim_image, fixation],
                                         duration=constants['IMAGE_DURATION'],
@@ -464,8 +466,8 @@ if __name__ == '__main__':
 
                     run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
-                    relative_stim_file = op.sep.join(stim_file.split(op.sep)[-2:])
-                    subcategory = stim_file.split(op.sep)[-2]
+                    relative_stim_file = op.sep.join(stim_file.split('/')[-2:])
+                    subcategory = stim_file.split('/')[-2]
 
                     if k_stim == target_idx:
                         trial_type = exp_info['Task'].lower()
