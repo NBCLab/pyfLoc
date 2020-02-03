@@ -314,7 +314,6 @@ if __name__ == '__main__':
     for category in stimulus_folders.keys():
         if stimulus_folders[category] is not None:
             stimulus_files = [glob(op.join(script_dir, 'stimuli/{}/*.png'.format(stimulus_folder))) for
-
                               stimulus_folder in stimulus_folders[category]]
             # Unravel list of lists
             stimulus_files = [op.realpath(item) for sublist in stimulus_files for item in sublist]
