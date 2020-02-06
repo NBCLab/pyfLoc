@@ -456,10 +456,10 @@ if __name__ == '__main__':
                     target_idx = None
 
                 for k_stim, stim_file in enumerate(miniblock_stimuli):
-                    trial_clock.reset()
-                    onset_time = run_clock.getTime()
                     stim_file = stim_file.replace('\\', '/')
                     stim_image.image = stim_file
+                    trial_clock.reset()
+                    onset_time = run_clock.getTime()
                     responses, _ = draw(win=window, stim=[stim_image, fixation],
                                         duration=constants['IMAGE_DURATION'],
                                         clock=run_clock)
