@@ -13,6 +13,8 @@ import pandas as pd
 from psychopy import gui, visual, core, event, logging
 from psychopy.constants import STARTED, STOPPED
 
+from utils import biopac_signature
+
 
 def allocate_responses(events_df, responses, response_times, response_window=1):
     """
@@ -215,6 +217,7 @@ if __name__ == '__main__':
     # Establish serial port connection
     if exp_info['BioPac'] == 'Yes':
         ser = serial.Serial('COM2', 115200)
+        biopac_key = constants['BIOPAC_KEY'][exp_info['Task']]
 
     if not op.exists(op.join(script_dir, 'data')):
         os.makedirs(op.join(script_dir, 'data'))
@@ -236,7 +239,7 @@ if __name__ == '__main__':
         name='countdown',
         text=None,
         font=u'Arial',
-        height=30,
+        height=50,
         pos=(0, 0),
         wrapWidth=30,
         ori=0,
@@ -255,7 +258,7 @@ if __name__ == '__main__':
         name='instructions',
         text=instruction_text,
         font=u'Arial',
-        height=30,
+        height=40,
         pos=(0, 0),
         wrapWidth=600,
         ori=0,
@@ -294,7 +297,7 @@ if __name__ == '__main__':
         text=None,
         font=u'Arial',
         pos=(0, 0),
-        height=30,
+        height=50,
         wrapWidth=None,
         ori=0,
         color='white',
@@ -352,6 +355,10 @@ if __name__ == '__main__':
 
         miniblock_categories = randomize_carefully(standard_categories, n_blocks_per_category)
         np.random.shuffle(task_miniblocks)
+
+        # Start recording
+        if exp_info['BioPac'] == 'Yes':
+            biopac_signature(ser, biopac_key.format(run_label))
 
         # Scanner runtime
         # ---------------

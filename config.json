@@ -78,6 +78,11 @@
         "RESPONSE_WINDOW": 1,
         "TARGET_ISI": 0.1,
         "TASK_RATE": 0.5,
-        "TOTAL_DURATION": 240
+        "TOTAL_DURATION": 240,
+        "BIOPAC_KEY": {
+            "Oddball": ":LO{}:",
+            "OneBack": ":L1{}:",
+            "TwoBack": ":L2{}:"
+        }
     }
 }
