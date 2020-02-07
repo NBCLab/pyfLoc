@@ -215,6 +215,7 @@ if __name__ == '__main__':
     # Establish serial port connection
     if exp_info['BioPac'] == 'Yes':
         ser = serial.Serial('COM2', 115200)
+        biopac_key = constants['BIOPAC_KEY'][exp_info['Task']]
 
     if not op.exists(op.join(script_dir, 'data')):
         os.makedirs(op.join(script_dir, 'data'))
