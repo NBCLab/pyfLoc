@@ -343,6 +343,7 @@ if __name__ == '__main__':
     run_clock = core.Clock()  # to track time since each run starts (post scanner pulse)
     miniblock_clock = core.Clock()  # to track duration of each miniblock
     trial_clock = core.Clock()  # to track duration of each trial
+    fixation_trial_clock = core.Clock()  # to account for fixation time spent loading image
 
     for i_run in range(n_runs):
         COLUMNS = ['onset', 'duration', 'trial_type', 'miniblock_number',
@@ -451,6 +452,7 @@ if __name__ == '__main__':
                     target_idx = None
 
                 for k_stim, stim_file in enumerate(miniblock_stimuli):
+                    fixation_trial_clock.reset()
                     stim_image.image = stim_file
                     trial_clock.reset()
                     onset_time = run_clock.getTime()
@@ -460,7 +462,8 @@ if __name__ == '__main__':
                     run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
                     duration = trial_clock.getTime()
-                    isi_dur = np.maximum(constants['TRIAL_DURATION'] - duration, 0)
+                    loading_plus_stim_duration = fixation_trial_clock.getTime()
+                    isi_dur = np.maximum(constants['TRIAL_DURATION'] - loading_plus_stim_duration, 0)
                     responses, _ = draw(win=window, stim=fixation,
                                         duration=isi_dur, clock=run_clock)
 
