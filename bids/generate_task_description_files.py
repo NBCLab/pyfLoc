@@ -38,14 +38,14 @@ events_description = {
                 'Also referred to as a "hit".'
             ),
             "false_positive": (
-                "An incorrect button-press on a baseline trial. "
+                "An incorrect button-press on a baseline or category trial. "
                 'Also referred to as a "false alarm".'
             ),
             "false_negative": (
                 "An incorrect non-press on a task target trial. "
                 'Also referred to as a "miss".'
             ),
-            "true_negative": ("A correct non-press on a baseline trial."),
+            "true_negative": ("A correct non-press on a baseline or category trial."),
         },
     },
 }

@@ -16,8 +16,20 @@ To keep participants focused on the task,
 there is also a behavioral task that participants will perform throughout the localizer.
 There are three options for this task: oddball, one-back, and two-back.
 
+The task does not include any kind of jitter.
+
+### Configuration
+
+You should modify the configuration file (``config.yml``) based on the following elements:
+
+1.  The current configuration has 4-minute runs. The VPN lab recommends acquiring at least 4 runs.
+2.  The repetition time (TR) of fMRI data for the localizer experiment must be a factor of its miniblock duration (6 s by default).
+    The original paper used a TR of 2 seconds.
+3.  If you want, you can replace the VPN lab's stimuli with another set.
+    Each stimulus set *must* have a "baseline" category (for all tasks) and a "scrambled" category (for the oddball task).
+
 ### Differences from the original task
 
 While we have attempted to maximize similarity between this task and the VPN lab's task,
 there are differences.
-I'm not sure what those differences are, unfortunately.
+I'm not sure what those differences are, unfortunately, since I wrote this task a few years ago.

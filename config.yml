@@ -2,20 +2,20 @@
 constants:
   # Countdown presented at the beginning of each run, in seconds
   COUNTDOWN_DURATION: 12
-  # Final screen presented at the end of each run, in seconds
-  END_SCREEN_DURATION: 2
+  # Proportion of trials in which to do the task (default = 50%)
+  TASK_RATE: 0.5
   # How long each stimulus is presented, in seconds
   IMAGE_DURATION: 0.4
-  # Number of single-category blocks
-  N_BLOCKS: 36
-  # Number of stimuli per block
-  N_STIMULI_PER_BLOCK: 12
+  # Interstimulus interval. Trial duration is IMAGE_DURATION + TARGET_ISI.
+  TARGET_ISI: 0.1
   # How long to wait after start of presentation of stimulus to accept response
   RESPONSE_WINDOW: 1
-  # Interstimulus interval
-  TARGET_ISI: 0.1
-  # Proportion of trials in which to do the task
-  TASK_RATE: 0.5
+  # Number of stimuli per block
+  N_STIMULI_PER_BLOCK: 12
+  # Number of single-category blocks per run
+  N_BLOCKS: 36
+  # Final screen presented at the end of each run, in seconds
+  END_SCREEN_DURATION: 2
   # Total run duration, in seconds
   TOTAL_DURATION: 240
 # The different sets of categories that determine which stimuli are used

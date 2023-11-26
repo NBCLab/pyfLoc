@@ -72,7 +72,8 @@ def allocate_responses(events_df, response_times, response_window=1.0):
         # Looping backwards lets us keep earliest response for RT
         for rt in response_times[::-1]:
             if onset <= rt < next_onset:
-                # Ignore response window and use current trial's duration only
+                # Ignore response window and use current trial's duration only,
+                # since we really don't know which trial elicited the false positive.
                 events_df.loc[trial_idx, "accuracy"] = 0
                 events_df.loc[trial_idx, "classification"] = "false_positive"
                 events_df.loc[trial_idx, "response_time"] = rt - onset
@@ -393,6 +394,7 @@ def main(config):
             ]
             stimuli[category] = stimulus_files
         else:
+            # TODO: Support stimulus for baseline trials
             stimuli[category] = None  # baseline trials just have fixation
 
     # Determine which trials will be task
