@@ -1,3 +1,6 @@
+.DS_Store
+
+# Ignore output files from task runs.
 data/
 
 # Ignore stimuli. Grab these from the VPNL's repository.
