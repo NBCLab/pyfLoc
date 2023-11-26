@@ -1,27 +1,39 @@
-from __future__ import absolute_import, division, print_function
-
-import json
+"""Run the PsychoPy implementation of the fLoc task."""
 import os
-import os.path as op
 import sys
 import time
 from glob import glob
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import serial
-from psychopy import core, event, gui, logging, visual
+from psychopy import core, event, logging, visual
 from psychopy.constants import STARTED, STOPPED
+from psychopy.gui import DlgFromDict
+from yaml import Loader, load
 
 
-def allocate_responses(events_df, responses, response_times, response_window=1):
-    """
-    Assign responses to task trials.
+def allocate_responses(events_df, response_times, response_window=1.0):
+    """Assign responses to task trials.
+
+    Parameters
+    ----------
+    events_df : :obj:`pandas.DataFrame`
+        Initial dataframe containing information about trials, but not participant responses.
+    response_times : :obj:`list` of :obj:`float` or None
+        A list of times at which the participant responsed within the run.
+    response_window : :obj:`float`
+        The time after each trial's onset in which to accept a response.
+
+    Returns
+    -------
+    events_df : :obj:`pandas.DataFrame`
+        Updated dataframe with columns "response_time", "accuracy", and "classification" added.
     """
     # Let's start by locating target trials
-    task_types = ["oddball", "oneback", "twoback"]
+    TASK_TYPES = ["oddball", "oneback", "twoback"]
     response_times = response_times[:]  # copy
-    target_trial_idx = events_df["trial_type"].isin(task_types)
+    target_trial_idx = events_df["trial_type"].isin(TASK_TYPES)
     nontarget_trial_idx = ~target_trial_idx
 
     events_df["response_time"] = "n/a"
@@ -30,9 +42,7 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
 
     # Defaults
     events_df.loc[events_df["trial_type"] == "category", "classification"] = 1
-    events_df.loc[
-        events_df["trial_type"] == "category", "classification"
-    ] = "true_negative"
+    events_df.loc[events_df["trial_type"] == "category", "classification"] = "true_negative"
     events_df.loc[target_trial_idx, "accuracy"] = 0  # default to miss
     events_df.loc[target_trial_idx, "classification"] = "false_negative"
 
@@ -40,9 +50,9 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
     for trial_idx in events_df.index[target_trial_idx]:
         onset = events_df.loc[trial_idx, "onset"]
         keep_idx = []
-        # Looping backwards lets us keep earliest response for RT
+        # Looping backwards lets us keep earliest response for RT.
         # Any response is *the* response, so the actual button doesn't matter.
-        for i_resp, rt in enumerate(response_times[::-1]):
+        for rt in response_times[::-1]:
             if onset <= rt <= (onset + response_window):
                 events_df.loc[trial_idx, "accuracy"] = 1
                 events_df.loc[trial_idx, "response_time"] = rt - onset
@@ -60,7 +70,7 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
             next_onset = events_df.loc[trial_idx + 1, "onset"]
 
         # Looping backwards lets us keep earliest response for RT
-        for i_resp, rt in enumerate(response_times[::-1]):
+        for rt in response_times[::-1]:
             if onset <= rt < next_onset:
                 # Ignore response window and use current trial's duration only
                 events_df.loc[trial_idx, "accuracy"] = 0
@@ -70,8 +80,23 @@ def allocate_responses(events_df, responses, response_times, response_window=1):
 
 
 def randomize_carefully(elems, n_repeat=2):
-    """
-    Shuffle without consecutive duplicates
+    """Shuffle without consecutive duplicates.
+
+    Parameters
+    ----------
+    elems : :obj:`list`
+        List of unique elements from which to build the random list.
+    n_repeat : :obj:`int`, optional
+        Number of repeats of each element in ``elems`` to have in the output list.
+        Default is 2.
+
+    Returns
+    -------
+    res : :obj:`list`
+        List of shuffled elements.
+
+    Notes
+    -----
     From https://stackoverflow.com/a/22963275/2589328
     """
     s = set(elems)
@@ -93,8 +118,12 @@ def randomize_carefully(elems, n_repeat=2):
 
 
 def close_on_esc(win):
-    """
-    Closes window if escape is pressed
+    """Close window if escape is pressed.
+
+    Parameters
+    ----------
+    win : :obj:`psychopy.visual.Window`
+        Window to close.
     """
     if "escape" in event.getKeys():
         win.close()
@@ -102,8 +131,15 @@ def close_on_esc(win):
 
 
 def draw_countdown(win, stim, duration):
-    """
-    Draw a countdown by the second
+    """Draw a countdown by the second.
+
+    Parameters
+    ----------
+    win : :obj:`psychopy.visual.Window`
+        Window in which to draw the countdown.
+    stim : :obj:`psychopy.visual.TextStim`
+    duration : :obj:`int`
+        Number of seconds for which to draw the countdown.
     """
     countdown_clock = core.Clock()
     countdown_sec = duration
@@ -120,7 +156,18 @@ def draw_countdown(win, stim, duration):
 
 
 def draw_until_keypress(win, stim, continueKeys=["5"]):
-    """ """
+    """Draw a screen until a specific key is pressed.
+
+    Parameters
+    ----------
+    win : :obj:`psychopy.visual.Window`
+        Window in which to draw the stimulus.
+    stim : :obj:`psychopy.visual.TextStim`
+        Text stimulus (e.g., instructions) to draw until one of the ``continueKeys`` are pressed.
+    continueKeys : :obj:`list` of :obj:`str`, optional
+        Keys to accept to stop drawing the stimulus.
+        Default is ["5"].
+    """
     response = event.BuilderKeyResponse()
     win.callOnFlip(response.clock.reset)
     event.clearEvents(eventType="keyboard")
@@ -138,15 +185,23 @@ def draw_until_keypress(win, stim, continueKeys=["5"]):
 
 
 def draw(win, stim, duration, clock):
-    """
-    Draw stimulus for a given duration.
+    """Draw stimulus for a given duration.
 
     Parameters
     ----------
-    win : (visual.Window)
-    stim : object with `.draw()` method or list of such objects
-    duration : (numeric)
-        duration in seconds to display the stimulus
+    win : :obj:`psychopy.visual.Window`
+        Window in which to draw the stimulus.
+    stim : object with ``.draw()`` method or list of such objects
+        Stimulus to draw for desired duration.
+    duration : :obj:`float`
+        Duration in seconds to display the stimulus.
+    clock : :obj:`psychopy.core.Clock`
+        Clock object with which to track the duration.
+
+    Notes
+    -----
+    According to the PsychoPy documentation, it would be more accurate to use a frame count than a
+    time duration.
     """
     # Use a busy loop instead of sleeping so we can exit early if need be.
     start_time = time.time()
@@ -162,31 +217,24 @@ def draw(win, stim, duration, clock):
                 s.draw()
         else:
             stim.draw()
+
+        # Allow any of keys 1 - 4
         keys = event.getKeys(keyList=["1", "2", "3", "4"], timeStamped=clock)
         if keys:
             response.keys.extend(keys)
             response.rt.append(response.clock.getTime())
+
         close_on_esc(win)
         win.flip()
+
     response.status = STOPPED
     return response.keys, response.rt
 
 
-if __name__ == "__main__":
-    # Ensure that relative paths start from the same directory as this script
-    try:
-        script_dir = op.dirname(op.abspath(__file__)).decode(
-            sys.getfilesystemencoding()
-        )
-    except AttributeError:
-        script_dir = op.dirname(op.abspath(__file__))
-
-    # Load configuration file
-    config_file = op.join(script_dir, "config.json")
-    with open(config_file, "r") as fo:
-        config = json.load(fo)
+def main(config):
+    """Run the fLoc task."""
     constants = config["constants"]
-    constants["TRIAL_DURATION"] = constants["IMAGE_DURATION"] + constants["TARGET_ISI"]
+    trial_duration = constants["IMAGE_DURATION"] + constants["TARGET_ISI"]
 
     # Collect user input
     # ------------------
@@ -197,12 +245,11 @@ if __name__ == "__main__":
         "Task": ["OneBack", "TwoBack", "Oddball"],
         "Image Set": ["default", "alternate", "both"],
         "Number of Runs": "4",
-        "BioPac": ["Yes", "No"],
     }
-    dlg = gui.DlgFromDict(
+    dlg = DlgFromDict(
         exp_info,
-        title="Functional localizer: {}".format(exp_info["Task"]),
-        order=["Subject", "Session", "Task", "Image Set", "Number of Runs", "BioPac"],
+        title="Functional localizer",
+        order=["Subject", "Session", "Task", "Image Set", "Number of Runs"],
     )
     window = visual.Window(
         fullscr=True,
@@ -217,23 +264,22 @@ if __name__ == "__main__":
         useFBO=True,
     )
     if not dlg.OK:
+        # Quit if user presses "Cancel" or "Close"
         core.quit()
 
-    # Establish serial port connection
-    if exp_info["BioPac"] == "Yes":
-        ser = serial.Serial("COM2", 115200)
-
-    if not op.exists(op.join(script_dir, "data")):
-        os.makedirs(op.join(script_dir, "data"))
+    output_dir = os.path.join(script_dir, "data")
+    os.makedirs(output_dir, exist_ok=True)
 
     # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-    base_name = "sub-{0}_ses-{1}_task-localizer{2}".format(
-        exp_info["Subject"].zfill(2), exp_info["Session"].zfill(2), exp_info["Task"]
-    )
+    ses_str = ""
+    if exp_info["Session"]:
+        ses_str = f"ses-{exp_info['Session'].zfill(2)}_"
+
+    base_name = f"sub-{exp_info['Subject'].zfill(2)}_{ses_str}task-localizer{exp_info['Task']}"
 
     # save a log file for detail verbose info
-    filename = op.join(script_dir, "data/{0}_events".format(base_name))
-    logfile = logging.LogFile(filename + ".log", level=logging.EXP)
+    filename = os.path.join(output_dir, f"{base_name}_events")
+    logging.LogFile(f"{filename}.log", level=logging.EXP)
     logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file
 
     # Initialize stimuli
@@ -252,15 +298,17 @@ if __name__ == "__main__":
         opacity=1,
         depth=-1.0,
     )
+
+    # Generate instruction stimulus
     if exp_info["Task"] == "Oddball":
-        instruction_text = "Fixate. Press a button when a scrambled image appears."
+        instruction_text = "Fixate.\nPress a button when a scrambled image appears."
     elif exp_info["Task"] == "TwoBack":
         instruction_text = (
-            "Fixate. Press a button when an image repeats with one intervening image."
+            "Fixate.\nPress a button when an image repeats with one intervening image."
         )
     else:
         instruction_text = (
-            "Fixate. Press a button when an image repeats on sequential trials."
+            "Fixate.\nPress a button when an image repeats on sequential trials."
         )
     instruction_text_box = visual.TextStim(
         win=window,
@@ -276,6 +324,8 @@ if __name__ == "__main__":
         opacity=1,
         depth=-1.0,
     )
+
+    # Base stimulus image (the actual image is swapped out at each trial)
     stim_image = visual.ImageStim(
         win=window,
         name="stimulus",
@@ -289,6 +339,8 @@ if __name__ == "__main__":
         depth=-1.0,
         interpolate=False,
     )
+
+    # Fixation stimulus
     fixation = visual.TextStim(
         win=window,
         name="fixation",
@@ -303,6 +355,8 @@ if __name__ == "__main__":
         opacity=1,
         depth=0.0,
     )
+
+    # Average performance across run to be shown between runs
     performance_screen = visual.TextStim(
         win=window,
         name="performance_screen",
@@ -330,14 +384,12 @@ if __name__ == "__main__":
     for category in stimulus_folders.keys():
         if stimulus_folders[category] is not None:
             stimulus_files = [
-                glob(op.join(script_dir, "stimuli/{}/*.jpg".format(stimulus_folder)))
+                glob(os.path.join(script_dir, f"stimuli/{stimulus_folder}/*.jpg"))
                 for stimulus_folder in stimulus_folders[category]
             ]
-            # Unravel list of lists
-            stimulus_files = [item for sublist in stimulus_files for item in sublist]
-            # Clean up paths
+            # Unravel list of lists and clean up paths
             stimulus_files = [
-                op.realpath(item).replace("\\", "/") for item in stimulus_files
+                Path(item).as_posix() for sublist in stimulus_files for item in sublist
             ]
             stimuli[category] = stimulus_files
         else:
@@ -353,9 +405,7 @@ if __name__ == "__main__":
     grabber_list = [1] * n_task_prop + [0] * n_nontask_prop
 
     # We want to ensure that tasks are not assigned to baseline blocks
-    n_nonbaseline_blocks = int(
-        constants["N_BLOCKS"] * (n_categories - 1) / n_categories
-    )
+    n_nonbaseline_blocks = int(constants["N_BLOCKS"] * (n_categories - 1) / n_categories)
     n_dupes = int(np.ceil(n_nonbaseline_blocks / len(grabber_list)))
     task_miniblocks = grabber_list * n_dupes
 
@@ -365,41 +415,35 @@ if __name__ == "__main__":
     run_clock = core.Clock()  # to track time since each run starts (post scanner pulse)
     miniblock_clock = core.Clock()  # to track duration of each miniblock
     trial_clock = core.Clock()  # to track duration of each trial
-    fixation_trial_clock = (
-        core.Clock()
-    )  # to account for fixation time spent loading image
+    fixation_trial_clock = core.Clock()  # to account for fixation time spent loading image
 
+    COLUMNS = [
+        "onset",
+        "duration",
+        "trial_type",
+        "miniblock_number",
+        "category",
+        "subcategory",
+        "stim_file",
+    ]
+    # unnecessary, since run_frame is defined at end of for loop, but satisfies linter
+    run_frame = None
     for i_run in range(n_runs):
-        COLUMNS = [
-            "onset",
-            "duration",
-            "trial_type",
-            "miniblock_number",
-            "category",
-            "subcategory",
-            "stim_file",
-        ]
         run_data = {c: [] for c in COLUMNS}
         run_label = i_run + 1
-        outfile = op.join(
-            script_dir,
-            "data",
-            "{0}_run-{1:02d}_events.tsv".format(base_name, run_label),
-        )
+        events_file = os.path.join(output_dir, f"{base_name}_run-{run_label:02d}_events.tsv")
 
-        miniblock_categories = randomize_carefully(
-            standard_categories, n_blocks_per_category
-        )
+        miniblock_categories = randomize_carefully(standard_categories, n_blocks_per_category)
         np.random.shuffle(task_miniblocks)
 
         # Scanner runtime
         # ---------------
-        # Wait for trigger from scanner.
+        # Wait for trigger from scanner to start run.
         if i_run == 0:
-            # Instructions for the first run
+            # Show instructions for the first run until the scanner trigger
             draw_until_keypress(win=window, stim=instruction_text_box)
         else:
-            # Performance for the rest of the runs
+            # Show performance from the last run until the scanner trigger
             hit_count = (run_frame["classification"] == "true_positive").sum()
             n_probes = (
                 run_frame["classification"]
@@ -408,20 +452,17 @@ if __name__ == "__main__":
             )
             hit_rate = hit_count / n_probes
             fa_count = (run_frame["classification"] == "false_positive").sum()
-            performance_str = ("Hits: {0}/{1} ({2:.02f}%)\nFalse alarms: {3}").format(
-                hit_count, n_probes, hit_rate, fa_count
+            performance_str = (
+                f"Hits: {hit_count}/{n_probes} ({hit_rate:.02f}%)\n"
+                f"False alarms: {fa_count}"
             )
             performance_screen.setText(performance_str)
             performance_screen.draw()
             draw_until_keypress(win=window, stim=performance_screen)
 
-        # Start recording
-        if exp_info["BioPac"] == "Yes":
-            ser.write("FF")
-
         run_clock.reset()
 
-        # Show countdown
+        # Show countdown at beginning of run
         draw_countdown(
             win=window,
             stim=countdown_text_box,
@@ -437,7 +478,7 @@ if __name__ == "__main__":
         run_data["subcategory"].append("n/a")
         run_data["miniblock_number"].append("n/a")
 
-        run_responses, run_response_times = [], []
+        run_response_times = []
         nonbaseline_block_counter = 0
         for j_miniblock, category in enumerate(miniblock_categories):
             miniblock_clock.reset()
@@ -446,12 +487,11 @@ if __name__ == "__main__":
                 responses, _ = draw(
                     win=window,
                     stim=fixation,
-                    duration=(
-                        constants["N_STIMULI_PER_BLOCK"] * constants["TRIAL_DURATION"]
-                    ),
+                    duration=constants["N_STIMULI_PER_BLOCK"] * trial_duration,
                     clock=run_clock,
                 )
-                run_responses += [resp[0] for resp in responses]
+                # The first element of each sublist is the actual button pressed,
+                # but we don't care about that.
                 run_response_times += [resp[1] for resp in responses]
                 target_idx = None
 
@@ -478,15 +518,11 @@ if __name__ == "__main__":
                     if (j_miniblock > 0) and (target_idx is not None):
                         last_target_onset = (
                             ((constants["N_STIMULI_PER_BLOCK"] + 1) - target_idx)
-                            * constants["TRIAL_DURATION"]
+                            * trial_duration
                             * -1
                         )
-                        last_target_rw_offset = (
-                            last_target_onset + constants["RESPONSE_WINDOW"]
-                        )
-                        first_viable_trial = int(
-                            np.ceil(last_target_rw_offset / constants["TRIAL_DURATION"])
-                        )
+                        last_target_rw_offset = (last_target_onset + constants["RESPONSE_WINDOW"])
+                        first_viable_trial = int(np.ceil(last_target_rw_offset / trial_duration))
                         first_viable_trial = np.maximum(0, first_viable_trial)
                         first_viable_trial += 1  # just to give it a one-trial buffer
                     else:
@@ -495,30 +531,18 @@ if __name__ == "__main__":
                     # Adjust stimuli based on task
                     if exp_info["Task"] == "Oddball":
                         # target is scrambled image
-                        target_idx = np.random.randint(
-                            first_viable_trial, len(miniblock_stimuli)
-                        )
-                        miniblock_stimuli[target_idx] = np.random.choice(
-                            stimuli["scrambled"]
-                        )
+                        target_idx = np.random.randint(first_viable_trial, len(miniblock_stimuli))
+                        miniblock_stimuli[target_idx] = np.random.choice(stimuli["scrambled"])
                     elif exp_info["Task"] == "OneBack":
                         # target is second stim of same kind
                         first_viable_trial = np.maximum(first_viable_trial, 1)
-                        target_idx = np.random.randint(
-                            first_viable_trial, len(miniblock_stimuli)
-                        )
-                        miniblock_stimuli[target_idx] = miniblock_stimuli[
-                            target_idx - 1
-                        ]
+                        target_idx = np.random.randint(first_viable_trial, len(miniblock_stimuli))
+                        miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 1]
                     elif exp_info["Task"] == "TwoBack":
                         # target is second stim of same kind
                         first_viable_trial = np.maximum(first_viable_trial, 2)
-                        target_idx = np.random.randint(
-                            first_viable_trial, len(miniblock_stimuli)
-                        )
-                        miniblock_stimuli[target_idx] = miniblock_stimuli[
-                            target_idx - 2
-                        ]
+                        target_idx = np.random.randint(first_viable_trial, len(miniblock_stimuli))
+                        miniblock_stimuli[target_idx] = miniblock_stimuli[target_idx - 2]
                 else:
                     target_idx = None
 
@@ -527,27 +551,31 @@ if __name__ == "__main__":
                     stim_image.image = stim_file
                     trial_clock.reset()
                     onset_time = run_clock.getTime()
+
+                    # Draw the stimulus.
+                    # Accept responses during the stimulus presentation.
                     responses, _ = draw(
                         win=window,
                         stim=[stim_image, fixation],
                         duration=constants["IMAGE_DURATION"],
                         clock=run_clock,
                     )
-                    run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
+
+                    # Log the inter-stimulus interval.
                     duration = trial_clock.getTime()
                     loading_plus_stim_duration = fixation_trial_clock.getTime()
-                    isi_dur = np.maximum(
-                        constants["TRIAL_DURATION"] - loading_plus_stim_duration, 0
-                    )
+                    isi_dur = np.maximum(trial_duration - loading_plus_stim_duration, 0)
+
+                    # Draw the post-stimulus fixation.
+                    # Accept responses during this fixation presentation.
                     responses, _ = draw(
                         win=window, stim=fixation, duration=isi_dur, clock=run_clock
                     )
 
-                    run_responses += [resp[0] for resp in responses]
                     run_response_times += [resp[1] for resp in responses]
-                    relative_stim_file = op.sep.join(stim_file.split("/")[-2:])
-                    subcategory = stim_file.split("/")[-2]
+                    relative_stim_file = os.path.relpath(stim_file)
+                    subcategory = os.path.basename(relative_stim_file).split("-")[0]
 
                     if k_stim == target_idx:
                         trial_type = exp_info["Task"].lower()
@@ -562,20 +590,22 @@ if __name__ == "__main__":
                     run_data["category"].append(category)
                     run_data["subcategory"].append(subcategory)
                     run_data["miniblock_number"].append(j_miniblock + 1)
+
                 nonbaseline_block_counter += 1
-            miniblock_duration = miniblock_clock.getTime()
+
+            # Unused duration
+            # miniblock_duration = miniblock_clock.getTime()
 
         run_frame = pd.DataFrame(run_data)
         run_frame = allocate_responses(
             run_frame,
-            run_responses,
             run_response_times,
             response_window=constants["RESPONSE_WINDOW"],
         )
         run_frame.to_csv(
-            outfile,
+            events_file,
             sep="\t",
-            line_terminator="\n",
+            lineterminator="\n",
             na_rep="n/a",
             index=False,
             float_format="%.2f",
@@ -585,26 +615,16 @@ if __name__ == "__main__":
         last_iti = constants["TOTAL_DURATION"] - run_clock.getTime()
         draw(win=window, stim=fixation, duration=last_iti, clock=run_clock)
 
-        # End recording
-        if exp_info["BioPac"] == "Yes":
-            ser.write("00")
+        print(f"Total duration of run: {run_clock.getTime()}")
 
-        print("Total duration of run: {}".format(run_clock.getTime()))
-    # end run_loop
-
-    # Shut down serial port connection
-    if exp_info["BioPac"] == "Yes":
-        ser.close()
-
+    # Show the final run's performance
     # Scanner is off for this
     hit_count = (run_frame["classification"] == "true_positive").sum()
-    n_probes = (
-        run_frame["classification"].isin(["false_negative", "true_positive"]).sum()
-    )
+    n_probes = run_frame["classification"].isin(["false_negative", "true_positive"]).sum()
     hit_rate = hit_count / n_probes
     fa_count = (run_frame["classification"] == "false_positive").sum()
-    performance_str = ("Hits: {0}/{1} ({2:.02f}%)\nFalse alarms: {3}").format(
-        hit_count, n_probes, hit_rate, fa_count
+    performance_str = (
+        f"Hits: {hit_count}/{n_probes} ({hit_rate:.02f}%)\nFalse alarms: {fa_count}"
     )
     performance_screen.setText(performance_str)
     draw(
@@ -620,3 +640,20 @@ if __name__ == "__main__":
     # make sure everything is closed down
     window.close()
     core.quit()
+
+
+if __name__ == "__main__":
+    # Ensure that relative paths start from the same directory as this script
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__)).decode(
+            sys.getfilesystemencoding()
+        )
+    except AttributeError:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Load configuration file
+    config_file = os.path.join(script_dir, "config.yml")
+    with open(config_file, "r") as fo:
+        config = load(fo, Loader=Loader)
+
+    main(config)

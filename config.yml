@@ -1,0 +1,72 @@
+# Constants that control the timing of the task
+constants:
+  # Countdown presented at the beginning of each run, in seconds
+  COUNTDOWN_DURATION: 12
+  # Final screen presented at the end of each run, in seconds
+  END_SCREEN_DURATION: 2
+  # How long each stimulus is presented, in seconds
+  IMAGE_DURATION: 0.4
+  # Number of single-category blocks
+  N_BLOCKS: 36
+  # Number of stimuli per block
+  N_STIMULI_PER_BLOCK: 12
+  # How long to wait after start of presentation of stimulus to accept response
+  RESPONSE_WINDOW: 1
+  # Interstimulus interval
+  TARGET_ISI: 0.1
+  # Proportion of trials in which to do the task
+  TASK_RATE: 0.5
+  # Total run duration, in seconds
+  TOTAL_DURATION: 240
+# The different sets of categories that determine which stimuli are used
+category_sets:
+  # The default categories
+  default:
+    baseline: null
+    bodies:
+    - body
+    characters:
+    - word
+    faces:
+    - adult
+    objects:
+    - car
+    places:
+    - house
+    scrambled:
+    - scrambled
+  # The alternate categories
+  alternate:
+    baseline: null
+    bodies:
+    - limb
+    characters:
+    - number
+    faces:
+    - child
+    objects:
+    - instrument
+    places:
+    - corridor
+    scrambled:
+    - scrambled
+  # Both sets of categories combined
+  both:
+    baseline: null
+    bodies:
+    - body
+    - limb
+    characters:
+    - word
+    - number
+    faces:
+    - adult
+    - child
+    objects:
+    - car
+    - instrument
+    places:
+    - house
+    - corridor
+    scrambled:
+    - scrambled

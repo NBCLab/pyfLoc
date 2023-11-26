@@ -1,0 +1,12 @@
+name: fLoc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - pandas
+  - pip
+  - pip:
+    - psychopy=23.2.3
+    - pygame
+    - yaml
