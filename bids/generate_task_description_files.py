@@ -1,3 +1,4 @@
+"""Generate BIDS JSON files for the task."""
 import json
 
 events_description = {
@@ -53,15 +54,11 @@ events_description = {
 for task_type in ["Oddball", "Two-Back", "One-Back"]:
     bold_description = {
         "CogAtlasID": "trm_553e85265f51e",
-        "TaskName": "dual functional localizer/{0}".format(task_type.lower()),
+        "TaskName": f"dual functional localizer/{task_type.lower()}",
     }
 
-    with open(
-        "task-localizer{0}_events.json".format(task_type.replace("-", "")), "w"
-    ) as fo:
+    with open(f"task-localizer{task_type.replace('-', '')}_events.json", "w") as fo:
         json.dump(events_description, fo, sort_keys=True, indent=4)
 
-    with open(
-        "task-localizer{0}_bold.json".format(task_type.replace("-", "")), "w"
-    ) as fo:
+    with open(f"task-localizer{task_type.replace('-', '')}_bold.json", "w") as fo:
         json.dump(bold_description, fo, sort_keys=True, indent=4)
