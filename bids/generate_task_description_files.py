@@ -35,16 +35,14 @@ events_description = {
         "Description": "How trial accuracy is labeled.",
         "Levels": {
             "true_positive": (
-                "A correct button-press on a task target trial. "
-                'Also referred to as a "hit".'
+                'A correct button-press on a task target trial. Also referred to as a "hit".'
             ),
             "false_positive": (
                 "An incorrect button-press on a baseline or category trial. "
                 'Also referred to as a "false alarm".'
             ),
             "false_negative": (
-                "An incorrect non-press on a task target trial. "
-                'Also referred to as a "miss".'
+                'An incorrect non-press on a task target trial. Also referred to as a "miss".'
             ),
             "true_negative": ("A correct non-press on a baseline or category trial."),
         },

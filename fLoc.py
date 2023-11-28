@@ -42,9 +42,7 @@ def allocate_responses(events_df, response_times, response_window=1.0):
 
     # Defaults
     events_df.loc[events_df["trial_type"] == "category", "classification"] = 1
-    events_df.loc[
-        events_df["trial_type"] == "category", "classification"
-    ] = "true_negative"
+    events_df.loc[events_df["trial_type"] == "category", "classification"] = "true_negative"
     events_df.loc[target_trial_idx, "accuracy"] = 0  # default to miss
     events_df.loc[target_trial_idx, "classification"] = "false_negative"
 
@@ -245,9 +243,7 @@ def main(debug=False):
     """Run the fLoc task."""
     # Ensure that relative paths start from the same directory as this script
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__)).decode(
-            sys.getfilesystemencoding()
-        )
+        script_dir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
     except AttributeError:
         script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -308,9 +304,7 @@ def main(debug=False):
     if exp_info["Session"]:
         ses_str = f"ses-{exp_info['Session'].zfill(2)}_"
 
-    base_name = (
-        f"sub-{exp_info['Subject'].zfill(2)}_{ses_str}task-localizer{exp_info['Task']}"
-    )
+    base_name = f"sub-{exp_info['Subject'].zfill(2)}_{ses_str}task-localizer{exp_info['Task']}"
 
     # save a log file for detail verbose info
     filename = os.path.join(output_dir, f"{base_name}_events")
@@ -342,9 +336,7 @@ def main(debug=False):
             "Fixate.\nPress a button when an image repeats with one intervening image."
         )
     else:
-        instruction_text = (
-            "Fixate.\nPress a button when an image repeats on sequential trials."
-        )
+        instruction_text = "Fixate.\nPress a button when an image repeats on sequential trials."
     instruction_text_box = visual.TextStim(
         win=window,
         name="instructions",
@@ -441,9 +433,7 @@ def main(debug=False):
     grabber_list = [1] * n_task_prop + [0] * n_nontask_prop
 
     # We want to ensure that tasks are not assigned to baseline blocks
-    n_nonbaseline_blocks = int(
-        constants["N_BLOCKS"] * (n_categories - 1) / n_categories
-    )
+    n_nonbaseline_blocks = int(constants["N_BLOCKS"] * (n_categories - 1) / n_categories)
     n_dupes = int(np.ceil(n_nonbaseline_blocks / len(grabber_list)))
     task_blocks = grabber_list * n_dupes
 
@@ -453,9 +443,7 @@ def main(debug=False):
     run_clock = core.Clock()  # to track time since each run starts (post scanner pulse)
     block_clock = core.Clock()  # to track duration of each block
     trial_clock = core.Clock()  # to track duration of each trial
-    fixation_trial_clock = (
-        core.Clock()
-    )  # to account for fixation time spent loading image
+    fixation_trial_clock = core.Clock()  # to account for fixation time spent loading image
 
     columns = [
         "onset",
@@ -471,13 +459,9 @@ def main(debug=False):
     for i_run in range(n_runs):
         run_data = {c: [] for c in columns}
         run_label = i_run + 1
-        events_file = os.path.join(
-            output_dir, f"{base_name}_run-{run_label:02d}_events.tsv"
-        )
+        events_file = os.path.join(output_dir, f"{base_name}_run-{run_label:02d}_events.tsv")
 
-        block_categories = randomize_carefully(
-            standard_categories, n_blocks_per_category
-        )
+        block_categories = randomize_carefully(standard_categories, n_blocks_per_category)
         np.random.shuffle(task_blocks)
 
         # Scanner runtime
@@ -489,16 +473,11 @@ def main(debug=False):
         else:
             # Show performance from the last run until the scanner trigger
             hit_count = (run_frame["classification"] == "true_positive").sum()
-            n_probes = (
-                run_frame["classification"]
-                .isin(["false_negative", "true_positive"])
-                .sum()
-            )
+            n_probes = run_frame["classification"].isin(["false_negative", "true_positive"]).sum()
             hit_rate = hit_count / n_probes
             fa_count = (run_frame["classification"] == "false_positive").sum()
             performance_str = (
-                f"Hits: {hit_count}/{n_probes} ({hit_rate:.02f}%)\n"
-                f"False alarms: {fa_count}"
+                f"Hits: {hit_count}/{n_probes} ({hit_rate:.02f}%)\n" f"False alarms: {fa_count}"
             )
             performance_screen.setText(performance_str)
             performance_screen.draw()
@@ -565,12 +544,8 @@ def main(debug=False):
                             * trial_duration
                             * -1
                         )
-                        last_target_rw_offset = (
-                            last_target_onset + constants["RESPONSE_WINDOW"]
-                        )
-                        first_viable_trial = int(
-                            np.ceil(last_target_rw_offset / trial_duration)
-                        )
+                        last_target_rw_offset = last_target_onset + constants["RESPONSE_WINDOW"]
+                        first_viable_trial = int(np.ceil(last_target_rw_offset / trial_duration))
                         first_viable_trial = np.maximum(0, first_viable_trial)
                         first_viable_trial += 1  # just to give it a one-trial buffer
                     else:
@@ -579,25 +554,17 @@ def main(debug=False):
                     # Adjust stimuli based on task
                     if exp_info["Task"] == "Oddball":
                         # target is scrambled image
-                        target_idx = np.random.randint(
-                            first_viable_trial, len(block_stimuli)
-                        )
-                        block_stimuli[target_idx] = np.random.choice(
-                            stimuli["scrambled"]
-                        )
+                        target_idx = np.random.randint(first_viable_trial, len(block_stimuli))
+                        block_stimuli[target_idx] = np.random.choice(stimuli["scrambled"])
                     elif exp_info["Task"] == "OneBack":
                         # target is second stim of same kind
                         first_viable_trial = np.maximum(first_viable_trial, 1)
-                        target_idx = np.random.randint(
-                            first_viable_trial, len(block_stimuli)
-                        )
+                        target_idx = np.random.randint(first_viable_trial, len(block_stimuli))
                         block_stimuli[target_idx] = block_stimuli[target_idx - 1]
                     elif exp_info["Task"] == "TwoBack":
                         # target is second stim of same kind
                         first_viable_trial = np.maximum(first_viable_trial, 2)
-                        target_idx = np.random.randint(
-                            first_viable_trial, len(block_stimuli)
-                        )
+                        target_idx = np.random.randint(first_viable_trial, len(block_stimuli))
                         block_stimuli[target_idx] = block_stimuli[target_idx - 2]
                 else:
                     target_idx = None
@@ -676,14 +643,10 @@ def main(debug=False):
     # Show the final run's performance
     # Scanner is off for this
     hit_count = (run_frame["classification"] == "true_positive").sum()
-    n_probes = (
-        run_frame["classification"].isin(["false_negative", "true_positive"]).sum()
-    )
+    n_probes = run_frame["classification"].isin(["false_negative", "true_positive"]).sum()
     hit_rate = hit_count / n_probes
     fa_count = (run_frame["classification"] == "false_positive").sum()
-    performance_str = (
-        f"Hits: {hit_count}/{n_probes} ({hit_rate:.02f}%)\nFalse alarms: {fa_count}"
-    )
+    performance_str = f"Hits: {hit_count}/{n_probes} ({hit_rate:.02f}%)\nFalse alarms: {fa_count}"
     performance_screen.setText(performance_str)
     draw(
         win=window,
