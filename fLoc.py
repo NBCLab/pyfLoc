@@ -631,6 +631,7 @@ def main(debug=False):
                 run_response_times += [resp[1] for resp in responses]
 
                 # Log the inter-stimulus interval.
+                # TODO: Try to adjust timing based on *expected* onset and duration here.
                 actual_duration = trial_clock.getTime()
                 loading_plus_stim_duration = fixation_trial_clock.getTime()
                 isi_dur = np.maximum(trial_duration - loading_plus_stim_duration, 0)
